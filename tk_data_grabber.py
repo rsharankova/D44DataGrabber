@@ -58,7 +58,7 @@ class MainFrame(ttk.Frame):
 
         self.enddate = datetime.now()
         self.startdate = self.enddate - timedelta(days=1)
-        self.args_dict = {'debug':False, 'maxcount': 0, 'starttime':'', 'stoptime':'', 'outdir':'', 'paramlist':[]}
+        self.args_dict = {'debug':False, 'starttime':'', 'stoptime':'', 'outdir':'', 'paramlist':[]}
         self.df = None
 
         
@@ -156,14 +156,20 @@ class MainFrame(ttk.Frame):
         
         self.args_dict['starttime'] = '{0:%Y-%m-%d+%H:%M:%S}'.format(self.startdate)
         self.args_dict['stoptime'] = '{0:%Y-%m-%d+%H:%M:%S}'.format(self.enddate)
-        self.args_dict['paramlist'].append(['L:BTOR','Node','e,52,e,0'])
-
+        self.args_dict['paramlist'].append(['Node','L:BTOR','e,52,e,0'])
+        self.args_dict['debug'] = True
+    
         # fetch data
+        print(self.args_dict['paramlist'])
         self.df = data_grabber.fetch_data(self.args_dict)
         print(self.df.head())
 
     def save_to_file(self):
-        data_grabber.save_to_file(self.args_dict,self.df)
+        filename = fd.asksaveasfilename(initialdir=os.getcwd(),filetypes=[('Comma-separated text','*.csv')])
+        try:
+            data_grabber.save_to_file(self.args_dict,self.df,filename)
+        except ValueError as error:
+            showerror(title='Error',message=error)
 
     def update_startdate(self,event):
         self.startdate = self.startdate.replace(year=self.startdatecal.get_date().year, month=self.startdatecal.get_date().month, day=self.startdatecal.get_date().day)

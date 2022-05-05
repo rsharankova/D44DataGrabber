@@ -12,8 +12,6 @@ def parse_args(args_dict):
                          help="Turn on verbose debugging. (default: False)")
     parser.add_argument ('--stopat',  dest='stopat', default='',
                          help="YYYY-MM-DD hh:mm:ss (default: now)")
-    parser.add_argument ('--maxcount',  dest='maxcount', default=-1,
-                         help="Number of devices in list to process. (default: -1 = all)")
     parser.add_argument ('--days', dest='days', type=float, default=0,
                          help="Days before start time to request data? (default: %(default)s).")
     parser.add_argument ('--hours', dest='hours', type=float, default=0,
@@ -31,7 +29,6 @@ def parse_args(args_dict):
     options = parser.parse_args()
     debug     = options.debug
     stopat    = options.stopat
-    maxcount  = int(options.maxcount)
     days      = options.days    
     hours     = options.hours   
     minutes   = options.minutes 
@@ -76,7 +73,6 @@ def parse_args(args_dict):
     if outdir == '': outdir = os.getcwd()
 
     args_dict['debug'] = debug
-    args_dict['maxcount'] = maxcount
     args_dict['starttime'] = starttime
     args_dict['stoptime'] = stoptime
     args_dict['outdir'] = outdir
@@ -86,7 +82,7 @@ def parse_args(args_dict):
 def getParamListFromTextFile(textfilename='ParamList.txt', debug=False):
     
     if debug: print ('getParamListFromTextFile: Opening %s'%textfilename)
-    # Bail if no file by that name                                                                                                                                                  
+
     if not os.path.isfile(textfilename): exit ('File %s is not a file.'%textfilename)
     textfile = open(textfilename,'r')
     lines = textfile.readlines()
@@ -108,13 +104,8 @@ def fetch_data(args_dict):
     URL = "http://www-ad.fnal.gov/cgi-bin/acl.pl?acl=logger_get/date_format='utc_seconds'/ignore_db_format/start=\""+args_dict['starttime']+"\"/end=\""+args_dict['stoptime']+"\""
 
     # Loop over device names, retrieving data from the specified logger node
-    maxcount = len(args_dict['paramlist']) if args_dict['maxcount'] < 0 else args_dict['maxcount']
-    devicecount = 0
     df = pd.DataFrame()
     for node, deviceName, evt in args_dict['paramlist']:
-        # Allows early stopping for development dolphins
-        devicecount += 1
-        if devicecount > maxcount: break
 
         tempURL = URL
         # Node
@@ -172,7 +163,7 @@ def save_to_file(args_dict, df, nameoverride=''):
         
 def main():
 
-    args_dict = {'debug':False, 'maxcount': 0, 'starttime':'', 'stoptime':'', 'outdir':'', 'paramlist':[]}
+    args_dict = {'debug':False, 'starttime':'', 'stoptime':'', 'outdir':'', 'paramlist':[]}
     parse_args(args_dict)
 
     df = fetch_data(args_dict)
