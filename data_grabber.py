@@ -11,7 +11,7 @@ def parse_args(args_dict):
     parser.add_argument ('-v', dest='debug', action="store_true", default=False,
                          help="Turn on verbose debugging. (default: False)")
     parser.add_argument ('--stopat',  dest='stopat', default='',
-                         help="YYYY-MM-DD hh:mm:ss (default: now)")
+                         help="YYYY-MM-DD+hh:mm:ss (default: now)")
     parser.add_argument ('--days', dest='days', type=float, default=0,
                          help="Days before start time to request data? (default: %(default)s).")
     parser.add_argument ('--hours', dest='hours', type=float, default=0,
@@ -28,7 +28,7 @@ def parse_args(args_dict):
     ### Get the options and argument values from the parser
     options = parser.parse_args()
     debug     = options.debug
-    stopat    = options.stopat
+    stoptime  = options.stopat
     days      = options.days    
     hours     = options.hours   
     minutes   = options.minutes 
@@ -40,30 +40,19 @@ def parse_args(args_dict):
     # Datetime for when to stop the reading
     today = datetime.today()
 
-    stoptime = ''
-    if stopat == '': #Default: Now
+    if stoptime == '': #Default: Now
         stoptime = '{0:%Y-%m-%d+%H:%M:%S}'.format(today )
-    else:            # or attempt to use the string passed in by user
-        stopdt = datetime.strptime(stopat,'%Y-%m-%d %H:%M:%S')
-        stoptime = '{0:%Y-%m-%d+%H:%M:%S}'.format(stopdt)
 
-    if debug: print ("Stop time: "+stoptime)
     
     # If no time interval set, default to 1 second
     if days == 0 and hours == 0 and minutes == 0 and seconds == 0: seconds = 1
-
-    if debug:
-        print ("Time interval: days = "+str(days)+
-               ", hours = "  +str(hours  )+
-               ", minutes = "+str(minutes)+
-               ", seconds = "+str(seconds)+".")
 
 
     # Build a datetime interval to offset starttime before stoptime. 
     interval = timedelta(days=days, hours=hours, minutes=minutes, seconds=seconds)
 
     # Set the time to start the data-series request window
-    starttime = '{0:%Y-%m-%d+%H:%M:%S}'.format(stopdt - interval)
+    starttime = '{0:%Y-%m-%d+%H:%M:%S}'.format(datetime.strptime(stoptime,'%Y-%m-%d+%H:%M:%S') - interval)
     
     
     if debug:
@@ -76,43 +65,45 @@ def parse_args(args_dict):
     args_dict['starttime'] = starttime
     args_dict['stoptime'] = stoptime
     args_dict['outdir'] = outdir
-    args_dict['paramlist'] = getParamListFromTextFile(textfilename = paramlistfile, debug=args_dict['debug'])
+    args_dict['paramlist'] = load_paramlist(textfilename = paramlistfile, debug=args_dict['debug'])
 
 
-def getParamListFromTextFile(textfilename='ParamList.txt', debug=False):
+def load_paramlist(textfilename='ParamList.txt', debug=False):
     
-    if debug: print ('getParamListFromTextFile: Opening %s'%textfilename)
+    if debug: print ('Opening %s'%textfilename)
 
-    if not os.path.isfile(textfilename): exit ('File %s is not a file.'%textfilename)
+    if not os.path.isfile(textfilename):
+        exit ('File %s is not a file.'%textfilename)
+
     textfile = open(textfilename,'r')
     lines = textfile.readlines()
-    finallist = []
+    devlist = []
+
     for line in lines:
-        cleanline = line.strip()
-        parts = cleanline.split(' ')
-        if not len(parts) == 3:
-            print (line+"  ...unable to parse node, device and event.")
+        cols = line.strip().split(' ')
+        if not len(cols) == 3:
+            print (line + " > 3 items in line.")
             continue
-        node,device,evt = parts[0],parts[1],parts[2]
-        finallist.append([node,device,evt])
-    if debug: print (finallist)
-    return finallist
+
+        devlist.append(cols) #device, node, event
+        
+    if debug: print (devlist)
+    return devlist
 
 
 def fetch_data(args_dict):
     # logger_get ACL command documentation: https://www-bd.fnal.gov/issues/wiki/ACLCommandLogger_get
     URL = "http://www-ad.fnal.gov/cgi-bin/acl.pl?acl=logger_get/date_format='utc_seconds'/ignore_db_format/start=\""+args_dict['starttime']+"\"/end=\""+args_dict['stoptime']+"\""
 
-    # Loop over device names, retrieving data from the specified logger node
     df = pd.DataFrame()
-    for node, deviceName, evt in args_dict['paramlist']:
+    for deviceName, node, evt in args_dict['paramlist']:
 
         tempURL = URL
         # Node
         if node !='Node':
             tempURL = tempURL+"/node="  + node
         # Event
-        if evt !='NA':
+        if evt !='Event':
             tempURL = tempURL+"/data_event=" + evt
         # URL for getting this device's data
         tempURL = tempURL + '+' + deviceName
@@ -121,7 +112,7 @@ def fetch_data(args_dict):
         # Download device data to a string
         response = urlopen(tempURL)
         if response is None:
-            if args_dict['debug']: print (tempURL+"\n begat no reponse.")
+            if args_dict['debug']: print (tempURL+"\n gto no reponse.")
             continue
 
         str1 = response.read().decode('utf-8').split('\n')

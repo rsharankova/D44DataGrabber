@@ -139,9 +139,9 @@ class MainFrame(ttk.Frame):
         try:
             f=open(filename,'r')
             for l in f:
-                node,dev,ev=l.split()
+                #node,dev,ev=l.split()
                 self.devlist.insert(parent='',index='end',iid=len(self.devlist.get_children()),text='',
-                                    values=(dev,node,ev))
+                                    values=(l.split()))
         except ValueError as error:
             showerror(title='Error',message=error)
             
@@ -157,16 +157,15 @@ class MainFrame(ttk.Frame):
         self.args_dict['stoptime'] = '{0:%Y-%m-%d+%H:%M:%S}'.format(self.enddate)
         self.args_dict['paramlist']=[]
         for line in self.devlist.get_children():
-            dev=self.devlist.item(line)['values']
-            self.args_dict['paramlist'].append([dev[1],dev[0],dev[2]])
+            self.args_dict['paramlist'].append(self.devlist.item(line)['values'])
             
-        self.args_dict['debug'] = True
+        #self.args_dict['debug'] = True
     
         # fetch data
         print(self.args_dict['paramlist'])
         self.df = data_grabber.fetch_data(self.args_dict)
-        #print(self.df.head())
 
+        
     def plot_data(self):
         ts = [key for key in list(self.df.keys()) if key.find('tstamp')!=-1]
         data = [key for key in list(self.df.keys()) if key.find('tstamp')==-1]
