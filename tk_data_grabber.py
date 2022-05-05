@@ -13,6 +13,7 @@ try:
     from tkcalendar import Calendar, DateEntry
     from datetime import datetime, timedelta
     import data_grabber
+    import matplotlib.pyplot as plt
     
 except ImportError:
     sys.exit('''Missing dependencies. First run 
@@ -61,6 +62,7 @@ class MainFrame(ttk.Frame):
         self.enddate = datetime.now()
         self.startdate = self.enddate - timedelta(days=1)
         self.args_dict = {'debug':False, 'starttime':'', 'stoptime':'', 'outdir':'', 'paramlist':[]}
+        #self.args_dict = container.args_dict
         self.df = None
         
         self.startcell=tk.Frame(self)
@@ -114,7 +116,7 @@ class MainFrame(ttk.Frame):
         self.buttoncell2.grid(column=0, row=6, columnspan = 3, padx=10, pady=10, sticky=tk.W)
 
         ttk.Button(self.buttoncell2, text="Get data", command=self.get_data).grid(column=0, row=0, padx=5, pady=5)
-        ttk.Button(self.buttoncell2, text="Plot data", command=self.get_data).grid(column=1, row=0, padx=5, pady=5)
+        ttk.Button(self.buttoncell2, text="Plot data", command=self.plot_data).grid(column=1, row=0, padx=5, pady=5)
         ttk.Button(self.buttoncell2, text="Save to file", command=self.save_to_file).grid(column=2, row=0, padx=5, pady=5)
         ttk.Button(self.buttoncell2, text="Quit", command=container.destroy).grid(column=3, row=0)
 
@@ -125,6 +127,7 @@ class MainFrame(ttk.Frame):
             return
         self.devlist.insert(parent='',index='end',iid=len(self.devlist.get_children()),text='',
                        values=(self.device.get(),self.node.get(),self.event.get()))
+        print(self.devlist.get_children())
         
     def remove_device(self):
         selected_devs = self.devlist.selection()        
@@ -145,6 +148,7 @@ class MainFrame(ttk.Frame):
     def get_data(self):
         print("Start",self.startdate.isoformat(timespec='seconds'))
         print("End",self.enddate.isoformat(timespec='seconds'))
+
         if self.startdate >= self.enddate:
             print('Select Start time earlier than End time')
             return
@@ -161,7 +165,17 @@ class MainFrame(ttk.Frame):
         # fetch data
         print(self.args_dict['paramlist'])
         self.df = data_grabber.fetch_data(self.args_dict)
-        print(self.df.head())
+        #print(self.df.head())
+
+    def plot_data(self):
+        ts = [key for key in list(self.df.keys()) if key.find('tstamp')!=-1]
+        data = [key for key in list(self.df.keys()) if key.find('tstamp')==-1]
+        print(ts, data)
+        #ax =self.df.plot(x='tstamp_B:CHGB15', y='B:CHGB15')
+        ax =self.df.plot('B:CHGB15')
+        #[self.df.plot(x=tsi, y=data[i]) for i,tsi in enumerate(ts)]
+        plt.show()
+
 
     def save_to_file(self):
         filename = fd.asksaveasfilename(initialdir=os.getcwd(),filetypes=[('Comma-separated text','*.csv')])
@@ -189,7 +203,7 @@ class MainFrame(ttk.Frame):
         self.endm_spin.set(self.enddate.minute)
 
     def set_start_interval(self,*args):
-        match=re.findall(r'(seconds|minutes|hours|days|weeks|years)=(\d+)',self.interval.get())
+        match=re.findall(r'(seconds|minutes|hours|days|weeks|months)=(\d+)',self.interval.get())
         if match:
             self.startdate=self.enddate-timedelta(**{x:int(y) for (x,y) in match})
             
@@ -204,6 +218,9 @@ class DataGrabber(tk.Tk):
                 self.title('D44 Data Grabber')
                 self.geometry('500x500')
                 self.resizable(True,True)
+
+                self.args_dict = {'debug':False, 'starttime':'', 'stoptime':'', 'outdir':'', 'paramlist':[]}
+                self.df = None
 
 if __name__ =="__main__":
         app = DataGrabber()
