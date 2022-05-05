@@ -1,0 +1,3 @@
+Bclk B:CHGB15 e,15,e,38
+Bstr B:BLCHG0 NA
+Bstr G:TLGBDF NA
