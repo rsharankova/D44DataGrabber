@@ -41,13 +41,15 @@ class MainFrame(ttk.Frame):
         self.device=tk.Entry(self,width=16)
         self.device.insert(0,'Device')
         self.device.grid(column=0,row=2)
+        self.device.bind("<FocusIn>",lambda x: self.device.selection_range(0, tk.END))
         self.node=tk.Entry(self,width=16)
         self.node.insert(0,'Node')
         self.node.grid(column=1,row=2)
+        self.node.bind("<FocusIn>",lambda x: self.node.selection_range(0, tk.END))
         self.event=tk.Entry(self,width=16)
         self.event.insert(0,'Event')
         self.event.grid(column=2,row=2)
-        self.event.bind("<FocusIn>",self.click_focus)
+        self.event.bind("<FocusIn>",lambda x: self.event.selection_range(0, tk.END))
 
         self.buttoncell1 = tk.Frame(self)
         self.buttoncell1.grid(column=0, row=3, columnspan = 3, padx=10, pady=10, sticky=tk.W)
@@ -60,7 +62,6 @@ class MainFrame(ttk.Frame):
         self.startdate = self.enddate - timedelta(days=1)
         self.args_dict = {'debug':False, 'starttime':'', 'stoptime':'', 'outdir':'', 'paramlist':[]}
         self.df = None
-
         
         self.startcell=tk.Frame(self)
         self.startcell.grid(column=0,row=4,columnspan=3, padx=10, pady=10, sticky=tk.W)
@@ -117,12 +118,7 @@ class MainFrame(ttk.Frame):
         ttk.Button(self.buttoncell2, text="Save to file", command=self.save_to_file).grid(column=2, row=0, padx=5, pady=5)
         ttk.Button(self.buttoncell2, text="Quit", command=container.destroy).grid(column=3, row=0)
 
-        
         self.grid(padx=10, pady=10, sticky=tk.NSEW)
-
-        
-    def click_focus(self,event):
-        print(event)
         
     def add_device(self):
         if "Device" in self.device.get():
@@ -145,7 +141,6 @@ class MainFrame(ttk.Frame):
                                     values=(dev,node,ev))
         except ValueError as error:
             showerror(title='Error',message=error)
-
             
     def get_data(self):
         print("Start",self.startdate.isoformat(timespec='seconds'))
@@ -156,7 +151,11 @@ class MainFrame(ttk.Frame):
         
         self.args_dict['starttime'] = '{0:%Y-%m-%d+%H:%M:%S}'.format(self.startdate)
         self.args_dict['stoptime'] = '{0:%Y-%m-%d+%H:%M:%S}'.format(self.enddate)
-        self.args_dict['paramlist'].append(['Node','L:BTOR','e,52,e,0'])
+        self.args_dict['paramlist']=[]
+        for line in self.devlist.get_children():
+            dev=self.devlist.item(line)['values']
+            self.args_dict['paramlist'].append([dev[1],dev[0],dev[2]])
+            
         self.args_dict['debug'] = True
     
         # fetch data
@@ -197,9 +196,7 @@ class MainFrame(ttk.Frame):
         self.startdatecal.set_date(self.startdate)
         self.starth_spin.set(self.startdate.hour)
         self.startm_spin.set(self.startdate.minute)
-        
-        
-        
+                
 class DataGrabber(tk.Tk):
         def __init__(self):
                 super().__init__()
