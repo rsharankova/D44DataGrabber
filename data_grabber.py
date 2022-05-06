@@ -132,7 +132,7 @@ def fetch_data(args_dict):
 
 
         dfloc=pd.DataFrame({'tstamp_%s'%deviceName: [float(e) for e in ts1],
-                            deviceName: data1})
+                            deviceName: [float(d) for d in data1]})
         if df.empty:
             df=dfloc
         else:
