@@ -13,7 +13,11 @@ try:
     from tkcalendar import Calendar, DateEntry
     from datetime import datetime, timedelta
     import data_grabber
-    import matplotlib.pyplot as plt
+
+    from matplotlib.backends.backend_tkagg import (
+    FigureCanvasTkAgg, NavigationToolbar2Tk)
+    from matplotlib.backend_bases import key_press_handler
+    from matplotlib.figure import Figure
     
 except ImportError:
     sys.exit('''Missing dependencies. First run 
@@ -120,6 +124,18 @@ class MainFrame(ttk.Frame):
         ttk.Button(self.buttoncell2, text="Save to file", command=self.save_to_file).grid(column=2, row=0, padx=5, pady=5)
         ttk.Button(self.buttoncell2, text="Quit", command=container.destroy).grid(column=3, row=0)
 
+        self.fig = Figure(figsize=(5, 4), dpi=100)
+        self.ax = self.fig.add_subplot()
+        self.ax.set_xlabel("time [s]")
+        
+        self.canvas = FigureCanvasTkAgg(self.fig, master=self)  # A tk.DrawingArea.
+        self.canvas.draw()
+        
+        self.toolbar = NavigationToolbar2Tk(self.canvas, self, pack_toolbar=False)
+        self.toolbar.update()
+        self.toolbar.grid(column=0, row=7, columnspan=3)
+        self.canvas.get_tk_widget().grid(column=0, row=8, columnspan=3)
+        
         self.grid(padx=10, pady=10, sticky=tk.NSEW)
         
     def add_device(self):
@@ -139,7 +155,6 @@ class MainFrame(ttk.Frame):
         try:
             f=open(filename,'r')
             for l in f:
-                #node,dev,ev=l.split()
                 self.devlist.insert(parent='',index='end',iid=len(self.devlist.get_children()),text='',
                                     values=(l.split()))
         except ValueError as error:
@@ -159,21 +174,18 @@ class MainFrame(ttk.Frame):
         for line in self.devlist.get_children():
             self.args_dict['paramlist'].append(self.devlist.item(line)['values'])
             
-        #self.args_dict['debug'] = True
+        self.args_dict['debug'] = True
     
         # fetch data
-        print(self.args_dict['paramlist'])
         self.df = data_grabber.fetch_data(self.args_dict)
-
         
     def plot_data(self):
         ts = [key for key in list(self.df.keys()) if key.find('tstamp')!=-1]
         data = [key for key in list(self.df.keys()) if key.find('tstamp')==-1]
         print(ts, data)
-        #ax =self.df.plot(x='tstamp_B:CHGB15', y='B:CHGB15')
-        ax =self.df.plot('B:CHGB15')
-        #[self.df.plot(x=tsi, y=data[i]) for i,tsi in enumerate(ts)]
-        plt.show()
+        for t,d in zip(ts,data):
+            self.ax.plot(self.df[t],self.df[d])
+        self.canvas.draw()
 
 
     def save_to_file(self):
