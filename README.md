@@ -1,2 +1,2 @@
-# D44DataGrabber
-Tool to fetch (and optionally plot) Data logger data 
+# D44 Lite
+Tool to fetch and plot Data logger data. Similar to D44 but with less features (for now!).
