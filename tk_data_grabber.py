@@ -218,11 +218,12 @@ class PlotDialog(tk.Toplevel, object):
 
         overlap.difference_update(['aqua','white','ivory','lime','chocolate','gold'])
         self.colors = [mcolors.XKCD_COLORS[f'xkcd:{color_name}'].upper() for color_name in sorted(overlap)]
+        self.colornames = sorted(overlap)
         
         ts = [key for key in list(parent.df.keys()) if key.find('tstamp')!=-1]
         data = [key for key in list(parent.df.keys()) if key.find('tstamp')==-1]
         
-        self.fig = Figure(figsize=(12, 10))
+        self.fig = Figure()
         self.ax = [None]*len(data)
         self.ax[0] = self.fig.add_subplot(111)
         for i in range(1,len(data)):
@@ -235,7 +236,7 @@ class PlotDialog(tk.Toplevel, object):
         self.canvas = FigureCanvasTkAgg(self.fig, master=self)
         self.canvas.draw()        
         #self.toolbar = NavigationToolbar2Tk(self.canvas, self, pack_toolbar=False)
-        self.toolbar = MyToolbar(self.canvas, self)
+        self.toolbar = MyToolbar(self.canvas,self)
         self.toolbar.update()
         self.canvas.get_tk_widget().grid(column=0, row=0, sticky=tk.NSEW )
         self.toolbar.grid(column=0, row=1, columnspan=3, sticky = tk.W + tk.E)
@@ -245,7 +246,6 @@ class PlotDialog(tk.Toplevel, object):
             self.ax[i].set_title(d+space,color=self.colors[i],ha='right',fontsize='large')                                
             self.ax[i].tick_params(axis='y', colors=self.colors[i], labelsize='large',rotation=90)
             self.ax[i].plot(parent.df[t],parent.df[d],c=self.colors[i],label=d)
-            print('axis titles/labels: ',self.ax[i].get_title(), self.ax[i].get_label())
 
             if i%2==0:
                 self.ax[i].yaxis.tick_left()
@@ -267,7 +267,7 @@ class PlotDialog(tk.Toplevel, object):
         self.canvas.draw()
         
 class MyToolbar(NavigationToolbar2Tk):
-  def __init__(self, figure_canvas, window, pack_toolbar=False):
+  def __init__(self, figure_canvas, window):
       self.toolitems = [*NavigationToolbar2Tk.toolitems]
       self.toolitems.insert(
           [name for name, *_ in self.toolitems].index("Subplots") + 1,
@@ -276,30 +276,82 @@ class MyToolbar(NavigationToolbar2Tk):
       NavigationToolbar2Tk.__init__(self, figure_canvas,window, pack_toolbar=False)
 
   def edit_parameters(self):
+    self.edit = EditDialog(self)
+        
 
-    axes = self.window.ax
-    if not axes:
-        showwarning('Warning','There are no axes to edit')
-    elif len(axes) == 1:
-        ax, =axes
-    else:
-        titles = [
-            ax.get_label() or
-            ax.get_title() or
-            f"<anonymous {type(ax).__name__}>"
-            for ax in axes]
-        #print(titles)
+  def apply_style(self):
+      axes = self.window.ax
+      item = self.edit.axselect.get()
+      if axes and len(self.edit.titles)>0 and item!='':
+          ax = axes[self.edit.titles.index(item)]
+          if self.edit.colselect.get() !='':
+              ax.get_lines()[0].set_color(self.edit.colselect.get())
+          ymin = self.edit.yminselect.get()
+          ymax = self.edit.ymaxselect.get()
+          if ymin != '' and ymax !='' and float(ymax)>float(ymin):
+              ax.set_ylim(ymin,ymax)
+          self.canvas.draw()
 
-        edit = tk.Toplevel()
-        selector = ttk.Combobox(edit, values=titles, width=8,justify='center')        
-        selector.pack()
+class EditDialog(tk.Toplevel, object):
+    def __init__(self,parent):
+        super().__init__(parent)
+        self.title("Edit properties")
+        #self.geometry("200x200")
+
+        axes = parent.window.ax
+        self.titles = []
+        if not axes:
+            showwarning('Warning','There are no axes to edit')
+            
+        else:
+            self.titles = [
+                ax.get_label().strip() or
+                ax.get_title().strip() or
+                ax.get_title('left').strip() or
+                ax.get_title('right') or
+                " - ".join(filter(None, [ax.get_xlabel(), ax.get_ylabel()])) or
+                f"<anonymous {type(ax).__name__}>"
+                for ax in axes]
+
+        
+        self.columnconfigure(0, weight=1)
+        self.rowconfigure(0, weight=1)
+
+        self.editframe = tk.Frame(self)
+        self.editframe.grid(column=0,row=0, sticky=tk.NSEW, padx=10, pady=10)
+
+        self.axlabel = tk.Label(self.editframe,text='Select axis:')
+        self.axlabel.grid(column=0, row=0)
+        self.axselect = ttk.Combobox(self.editframe, values=self.titles, width=10,justify='left')
+        self.axselect.option_add('*TCombobox*Listbox.Justify', 'center')
+        self.axselect.grid(column=1,row=0)
+        self.collabel = tk.Label(self.editframe, text='Color:')
+        self.collabel.grid(column=0,row=1)
+        self.colselect = ttk.Combobox(self.editframe, values = parent.window.colornames, width=10, justify='left' )
+        self.colselect.option_add('*TCombobox*Listbox.Justify', 'center')
+        self.colselect.grid(column=1,row=1)
+        self.yminlabel = tk.Label(self.editframe, text='Y min:')
+        self.yminlabel.grid(column=0,row=2)
+        self.yminselect=tk.Entry(self.editframe,width=10)
+        self.yminselect.insert(0,'0.0')
+        self.yminselect.bind("<FocusIn>",lambda x: self.yminselect.selection_range(0, tk.END))    
+        self.yminselect.grid(column=1,row=2)
+        self.ymaxlabel = tk.Label(self.editframe, text='Y max:')
+        self.ymaxlabel.grid(column=0,row=3)
+        self.ymaxselect=tk.Entry(self.editframe,width=10)
+        self.ymaxselect.insert(0,'0.0')
+        self.ymaxselect.bind("<FocusIn>",lambda x: self.ymaxselect.selection_range(0, tk.END))    
+        self.ymaxselect.grid(column=1,row=3)
+
+        ttk.Button(self.editframe, text="Apply style", command=parent.apply_style).grid(column=0, row=4)
+        ttk.Button(self.editframe, text="Close", command=self.destroy).grid(column=1, row=4)
 
     
 class DataGrabber(tk.Tk):
         def __init__(self):
                 super().__init__()
 
-                self.title('D44 Data Grabber')
+                self.title('D44 Lite')
                 self.geometry('500x500')
                 self.resizable(True,True)
 
