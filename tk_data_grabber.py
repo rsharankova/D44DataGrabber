@@ -9,7 +9,7 @@ try:
     import tkinter as tk
     from tkinter import ttk
     from tkinter import filedialog as fd
-    from tkinter.messagebox import showerror
+    from tkinter.messagebox import showerror, showwarning
     from tkcalendar import Calendar, DateEntry
     from datetime import datetime, timedelta
     import data_grabber
@@ -18,6 +18,8 @@ try:
     FigureCanvasTkAgg, NavigationToolbar2Tk)
     from matplotlib.backend_bases import key_press_handler
     from matplotlib.figure import Figure
+    import matplotlib.colors as mcolors
+    from matplotlib import pyplot as plt
     
 except ImportError:
     sys.exit('''Missing dependencies. First run 
@@ -208,31 +210,91 @@ class PlotDialog(tk.Toplevel, object):
     def __init__(self,parent):
         super().__init__(parent)
         self.title("Data")
-        self.geometry("500x500")
+        self.geometry("500x400")
 
-        #self.fig = Figure(figsize=(5, 4), dpi=100)
-        self.fig = Figure()
-        self.ax = self.fig.add_subplot()
-        #self.ax.set_xlabel("time [s]")
+        plt.rcParams["axes.titlelocation"] = 'right'
+        overlap = {name for name in mcolors.CSS4_COLORS
+                   if f'xkcd:{name}' in mcolors.XKCD_COLORS}
 
-        plotcell = tk.Frame(self)
-        self.canvas = FigureCanvasTkAgg(self.fig, master=plotcell)
-        self.canvas.draw()        
-        self.toolbar = NavigationToolbar2Tk(self.canvas, plotcell, pack_toolbar=False)
-        self.toolbar.update()
-        self.toolbar.grid(column=0, row=7, columnspan=3, sticky = tk.W + tk.E)
-        self.canvas.get_tk_widget().grid(column=0, row=1, sticky=tk.NSEW )
-
-        plotcell.grid(column=0, row=0, sticky = tk.NSEW)
+        overlap.difference_update(['aqua','white','ivory','lime','chocolate','gold'])
+        self.colors = [mcolors.XKCD_COLORS[f'xkcd:{color_name}'].upper() for color_name in sorted(overlap)]
         
         ts = [key for key in list(parent.df.keys()) if key.find('tstamp')!=-1]
         data = [key for key in list(parent.df.keys()) if key.find('tstamp')==-1]
-        print(ts, data)
-        for t,d in zip(ts,data):
-            self.ax.plot(parent.df[t],parent.df[d])
-        self.canvas.draw()
-
         
+        self.fig = Figure(figsize=(12, 10))
+        self.ax = [None]*len(data)
+        self.ax[0] = self.fig.add_subplot(111)
+        for i in range(1,len(data)):
+            self.ax[i] = self.ax[0].twinx()
+        self.ax[0].set_xlabel("time [s]")
+
+        self.columnconfigure(0, weight=1)
+        self.rowconfigure(0, weight=1)
+
+        self.canvas = FigureCanvasTkAgg(self.fig, master=self)
+        self.canvas.draw()        
+        #self.toolbar = NavigationToolbar2Tk(self.canvas, self, pack_toolbar=False)
+        self.toolbar = MyToolbar(self.canvas, self)
+        self.toolbar.update()
+        self.canvas.get_tk_widget().grid(column=0, row=0, sticky=tk.NSEW )
+        self.toolbar.grid(column=0, row=1, columnspan=3, sticky = tk.W + tk.E)
+        
+        for i,(t,d) in enumerate(zip(ts,data)):
+            space= space + '  '*len(d) if i>0 else ''
+            self.ax[i].set_title(d+space,color=self.colors[i],ha='right',fontsize='large')                                
+            self.ax[i].tick_params(axis='y', colors=self.colors[i], labelsize='large',rotation=90)
+            self.ax[i].plot(parent.df[t],parent.df[d],c=self.colors[i],label=d)
+            print('axis titles/labels: ',self.ax[i].get_title(), self.ax[i].get_label())
+
+            if i%2==0:
+                self.ax[i].yaxis.tick_left()
+                for yl in self.ax[i].get_yticklabels():
+                    yl.set_x( -0.025*(i/2.) )
+                    yl.set(verticalalignment='bottom')
+                    
+            else:
+                self.ax[i].yaxis.tick_right()
+                for yl in self.ax[i].get_yticklabels():
+                    yl.set_x( 1.0+0.025*(i-1)/2.)
+                    yl.set(verticalalignment='bottom')
+                                        
+        self.fig.subplots_adjust(left=0.12)
+        self.fig.subplots_adjust(right=0.88)
+        self.fig.subplots_adjust(bottom=0.12)
+        self.fig.subplots_adjust(top=0.88)
+
+        self.canvas.draw()
+        
+class MyToolbar(NavigationToolbar2Tk):
+  def __init__(self, figure_canvas, window, pack_toolbar=False):
+      self.toolitems = [*NavigationToolbar2Tk.toolitems]
+      self.toolitems.insert(
+          [name for name, *_ in self.toolitems].index("Subplots") + 1,
+          ("Customize", "Edit axis, curve and image parameters",'subplots','edit_parameters'))
+
+      NavigationToolbar2Tk.__init__(self, figure_canvas,window, pack_toolbar=False)
+
+  def edit_parameters(self):
+
+    axes = self.window.ax
+    if not axes:
+        showwarning('Warning','There are no axes to edit')
+    elif len(axes) == 1:
+        ax, =axes
+    else:
+        titles = [
+            ax.get_label() or
+            ax.get_title() or
+            f"<anonymous {type(ax).__name__}>"
+            for ax in axes]
+        #print(titles)
+
+        edit = tk.Toplevel()
+        selector = ttk.Combobox(edit, values=titles, width=8,justify='center')        
+        selector.pack()
+
+    
 class DataGrabber(tk.Tk):
         def __init__(self):
                 super().__init__()
