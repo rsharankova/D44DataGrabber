@@ -123,21 +123,6 @@ class MainFrame(ttk.Frame):
         ttk.Button(self.buttoncell2, text="Plot data", command=self.plot_data).grid(column=1, row=0, padx=5, pady=5)
         ttk.Button(self.buttoncell2, text="Save to file", command=self.save_to_file).grid(column=2, row=0, padx=5, pady=5)
         ttk.Button(self.buttoncell2, text="Quit", command=container.destroy).grid(column=3, row=0)
-
-        self.fig = Figure(figsize=(5, 4), dpi=100)
-        self.ax = self.fig.add_subplot()
-        self.ax.set_xlabel("time [s]")
-
-        plotWin = tk.Toplevel(self)
-        plotWin.title("Data")
-        plotWin.geometry("600x500")
-        self.canvas = FigureCanvasTkAgg(self.fig, master=plotWin)  # A tk.DrawingArea.
-        self.canvas.draw()
-        
-        self.toolbar = NavigationToolbar2Tk(self.canvas, self, pack_toolbar=False)
-        self.toolbar.update()
-        self.toolbar.grid(column=0, row=7, columnspan=3)
-        self.canvas.get_tk_widget().grid(column=0, row=8, columnspan=3)
         
         self.grid(padx=10, pady=10, sticky=tk.NSEW)
         
@@ -183,13 +168,7 @@ class MainFrame(ttk.Frame):
         self.df = data_grabber.fetch_data(self.args_dict)
         
     def plot_data(self):
-        ts = [key for key in list(self.df.keys()) if key.find('tstamp')!=-1]
-        data = [key for key in list(self.df.keys()) if key.find('tstamp')==-1]
-        print(ts, data)
-        for t,d in zip(ts,data):
-            self.ax.plot(self.df[t],self.df[d])
-        self.canvas.draw()
-
+        plotWin = PlotDialog(self)
 
     def save_to_file(self):
         filename = fd.asksaveasfilename(initialdir=os.getcwd(),filetypes=[('Comma-separated text','*.csv')])
@@ -224,7 +203,36 @@ class MainFrame(ttk.Frame):
         self.startdatecal.set_date(self.startdate)
         self.starth_spin.set(self.startdate.hour)
         self.startm_spin.set(self.startdate.minute)
-                
+
+class PlotDialog(tk.Toplevel, object):
+    def __init__(self,parent):
+        super().__init__(parent)
+        self.title("Data")
+        self.geometry("500x500")
+
+        #self.fig = Figure(figsize=(5, 4), dpi=100)
+        self.fig = Figure()
+        self.ax = self.fig.add_subplot()
+        #self.ax.set_xlabel("time [s]")
+
+        plotcell = tk.Frame(self)
+        self.canvas = FigureCanvasTkAgg(self.fig, master=plotcell)
+        self.canvas.draw()        
+        self.toolbar = NavigationToolbar2Tk(self.canvas, plotcell, pack_toolbar=False)
+        self.toolbar.update()
+        self.toolbar.grid(column=0, row=7, columnspan=3, sticky = tk.W + tk.E)
+        self.canvas.get_tk_widget().grid(column=0, row=1, sticky=tk.NSEW )
+
+        plotcell.grid(column=0, row=0, sticky = tk.NSEW)
+        
+        ts = [key for key in list(parent.df.keys()) if key.find('tstamp')!=-1]
+        data = [key for key in list(parent.df.keys()) if key.find('tstamp')==-1]
+        print(ts, data)
+        for t,d in zip(ts,data):
+            self.ax.plot(parent.df[t],parent.df[d])
+        self.canvas.draw()
+
+        
 class DataGrabber(tk.Tk):
         def __init__(self):
                 super().__init__()
