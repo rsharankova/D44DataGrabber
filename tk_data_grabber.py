@@ -127,8 +127,11 @@ class MainFrame(ttk.Frame):
         self.fig = Figure(figsize=(5, 4), dpi=100)
         self.ax = self.fig.add_subplot()
         self.ax.set_xlabel("time [s]")
-        
-        self.canvas = FigureCanvasTkAgg(self.fig, master=self)  # A tk.DrawingArea.
+
+        plotWin = tk.Toplevel(self)
+        plotWin.title("Data")
+        plotWin.geometry("600x500")
+        self.canvas = FigureCanvasTkAgg(self.fig, master=plotWin)  # A tk.DrawingArea.
         self.canvas.draw()
         
         self.toolbar = NavigationToolbar2Tk(self.canvas, self, pack_toolbar=False)
