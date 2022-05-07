@@ -210,7 +210,6 @@ class PlotDialog(tk.Toplevel, object):
     def __init__(self,parent):
         super().__init__(parent)
         self.title("Data")
-        self.geometry("500x400")
 
         plt.rcParams["axes.titlelocation"] = 'right'
         overlap = {name for name in mcolors.CSS4_COLORS
@@ -223,12 +222,12 @@ class PlotDialog(tk.Toplevel, object):
         ts = [key for key in list(parent.df.keys()) if key.find('tstamp')!=-1]
         data = [key for key in list(parent.df.keys()) if key.find('tstamp')==-1]
         
-        self.fig = Figure()
+        self.fig = Figure(figsize=(10,5))
         self.ax = [None]*len(data)
         self.ax[0] = self.fig.add_subplot(111)
         for i in range(1,len(data)):
             self.ax[i] = self.ax[0].twinx()
-        self.ax[0].set_xlabel("time [s]")
+        self.ax[0].set_xlabel("time")
 
         self.columnconfigure(0, weight=1)
         self.rowconfigure(0, weight=1)
@@ -242,11 +241,11 @@ class PlotDialog(tk.Toplevel, object):
         self.toolbar.grid(column=0, row=1, columnspan=3, sticky = tk.W + tk.E)
         
         for i,(t,d) in enumerate(zip(ts,data)):
-            space= space + '  '*len(d) if i>0 else ''
+            space= space + '  '*(len(d)+1) if i>0 else ''
             self.ax[i].set_title(d+space,color=self.colors[i],ha='right',fontsize='large')                                
             self.ax[i].tick_params(axis='y', colors=self.colors[i], labelsize='large',rotation=90)
-            self.ax[i].xaxis_date('US/Central')
-            self.ax[i].plot(parent.df[t]/1000.,parent.df[d],c=self.colors[i],label=d)
+            tstamps=parent.df[t].apply(lambda x: datetime.fromtimestamp(x) if x==x else x)
+            self.ax[i].plot(tstamps,parent.df[d],c=self.colors[i],label=d)
 
             if i%2==0:
                 self.ax[i].yaxis.tick_left()
@@ -272,7 +271,7 @@ class MyToolbar(NavigationToolbar2Tk):
       self.toolitems = [*NavigationToolbar2Tk.toolitems]
       self.toolitems.insert(
           [name for name, *_ in self.toolitems].index("Subplots") + 1,
-          ("Customize", "Edit axis, curve and image parameters",'subplots','edit_parameters'))
+          ("Customize", "Edit axis, curve and image parameters",'qt4_editor_options','edit_parameters'))
 
       NavigationToolbar2Tk.__init__(self, figure_canvas,window, pack_toolbar=False)
 
@@ -287,7 +286,8 @@ class MyToolbar(NavigationToolbar2Tk):
           ax = axes[self.edit.titles.index(item)]
           if self.edit.colselect.get() !='':
               ax.get_lines()[0].set_color(self.edit.colselect.get())
-              ax.tick_params(colors=self.edit.colselect.get(), which='both')
+              ax.tick_params(colors=self.edit.colselect.get(), which='both',axis='y')
+              ax.set_title(ax.get_title('right'),color=self.edit.colselect.get(),ha='right',fontsize='large')
           ymin = self.edit.yminselect.get()
           ymax = self.edit.ymaxselect.get()
           if ymin != '' and ymax !='' and float(ymax)>float(ymin):
@@ -310,7 +310,7 @@ class EditDialog(tk.Toplevel, object):
                 ax.get_label().strip() or
                 ax.get_title().strip() or
                 ax.get_title('left').strip() or
-                ax.get_title('right') or
+                ax.get_title('right').strip() or
                 " - ".join(filter(None, [ax.get_xlabel(), ax.get_ylabel()])) or
                 f"<anonymous {type(ax).__name__}>"
                 for ax in axes]
