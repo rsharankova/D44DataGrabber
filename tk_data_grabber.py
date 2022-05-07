@@ -245,7 +245,8 @@ class PlotDialog(tk.Toplevel, object):
             space= space + '  '*len(d) if i>0 else ''
             self.ax[i].set_title(d+space,color=self.colors[i],ha='right',fontsize='large')                                
             self.ax[i].tick_params(axis='y', colors=self.colors[i], labelsize='large',rotation=90)
-            self.ax[i].plot(parent.df[t],parent.df[d],c=self.colors[i],label=d)
+            self.ax[i].xaxis_date('US/Central')
+            self.ax[i].plot(parent.df[t]/1000.,parent.df[d],c=self.colors[i],label=d)
 
             if i%2==0:
                 self.ax[i].yaxis.tick_left()
@@ -286,10 +287,11 @@ class MyToolbar(NavigationToolbar2Tk):
           ax = axes[self.edit.titles.index(item)]
           if self.edit.colselect.get() !='':
               ax.get_lines()[0].set_color(self.edit.colselect.get())
+              ax.tick_params(colors=self.edit.colselect.get(), which='both')
           ymin = self.edit.yminselect.get()
           ymax = self.edit.ymaxselect.get()
           if ymin != '' and ymax !='' and float(ymax)>float(ymin):
-              ax.set_ylim(ymin,ymax)
+              ax.set_ylim(float(ymin),float(ymax))
           self.canvas.draw()
 
 class EditDialog(tk.Toplevel, object):
