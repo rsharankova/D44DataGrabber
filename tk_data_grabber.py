@@ -13,7 +13,8 @@ try:
     from tkcalendar import Calendar, DateEntry
     from datetime import datetime, timedelta
     import data_grabber
-
+    import config
+    
     from matplotlib.backends.backend_tkagg import (
     FigureCanvasTkAgg, NavigationToolbar2Tk)
     from matplotlib.backend_bases import key_press_handler
@@ -25,11 +26,12 @@ except ImportError:
     sys.exit('''Missing dependencies. First run 
     pip install %s '''%(' '.join(missing)))
 
-
 class MainFrame(ttk.Frame):
     def __init__(self, container):
         super().__init__(container)
 
+        self.cfg=config.config()
+        
         devlist_scroll=tk.Scrollbar(self)
         self.devlist=ttk.Treeview(self,yscrollcommand=devlist_scroll.set)
         devlist_scroll.config(command=self.devlist.yview)
@@ -44,11 +46,15 @@ class MainFrame(ttk.Frame):
         self.devlist.heading("node",text="Node",anchor=tk.CENTER)
         self.devlist.heading("event",text="Event",anchor=tk.CENTER)
         self.devlist.grid(column=0,row=0,columnspan=3,rowspan=2,sticky = tk.NSEW)
-    
+        self.restore_cfg()
+        
         self.device=tk.Entry(self,width=16)
         self.device.insert(0,'Device')
         self.device.grid(column=0,row=2)
+        self.device.bind("<KeyRelease>",self.fill_device)
         self.device.bind("<FocusIn>",lambda x: self.device.selection_range(0, tk.END))
+        self.device.bind("<FocusOut>",self.fill_node_event)
+        
         self.node=tk.Entry(self,width=16)
         self.node.insert(0,'Node')
         self.node.grid(column=1,row=2)
@@ -125,21 +131,52 @@ class MainFrame(ttk.Frame):
         ttk.Button(self.buttoncell2, text="Plot data", command=self.plot_data).grid(column=1, row=0, padx=5, pady=5)
         ttk.Button(self.buttoncell2, text="Save to file", command=self.save_to_file).grid(column=2, row=0, padx=5, pady=5)
         ttk.Button(self.buttoncell2, text="Quit", command=container.destroy).grid(column=3, row=0)
-        
+
+        self.bind("<Destroy>", self.close_win)
         self.grid(padx=10, pady=10, sticky=tk.NSEW)
-        
+
+    def close_win(self,event):
+        self.cfg.save_config()
+
+    def fill_device(self,event):
+        if event.keysym in ["BackSpace","Left","Right","Up","Down","Shift_L","Shift_R","Tab"]:
+            return
+
+        devs=[e[0] for e in self.cfg.get_list_of_devices(all=True)]
+        for dev in devs:
+            if dev.find(self.device.get().upper())==0:
+                devtxt=self.device.get()
+                l=len(devtxt)
+                self.device.delete(0,l)
+                self.device.insert(0,devtxt+dev[l:])
+                self.device.icursor(l)
+                self.device.select_range(l,len(dev))
+
+    def fill_node_event(self,event):
+        for dne in self.cfg.get_list_of_devices(all=True):
+            if self.device.get().upper()==dne[0]:
+                self.node.delete(0,tk.END)
+                self.node.insert(0,dne[1])
+                self.event.delete(0,tk.END)
+                self.event.insert(0,dne[2])
+            
     def add_device(self):
         if "Device" in self.device.get():
             return
         self.devlist.insert(parent='',index='end',iid=len(self.devlist.get_children()),text='',
-                       values=(self.device.get(),self.node.get(),self.event.get()))
-        print(self.devlist.get_children())
+                       values=(self.device.get().upper(),self.node.get(),self.event.get()))
+        self.cfg.update_device(device=self.device.get().upper(),node=self.node.get(),event=self.event.get(),active=True)
         
     def remove_device(self):
         selected_devs = self.devlist.selection()        
-        for dev in selected_devs:          
+        for dev in selected_devs:
+            self.cfg.update_device(device=self.devlist.item(dev)["values"][0],active=False)
             self.devlist.delete(dev)
-
+            
+    def restore_cfg(self):
+        for val in self.cfg.get_list_of_devices():
+            self.devlist.insert(parent='',index='end',iid=len(self.devlist.get_children()),text='',values=val)
+            
     def open_file(self):
         filename = fd.askopenfilename()
         try:
@@ -147,6 +184,7 @@ class MainFrame(ttk.Frame):
             for l in f:
                 self.devlist.insert(parent='',index='end',iid=len(self.devlist.get_children()),text='',
                                     values=(l.split()))
+                self.cfg.update_device(device=l.split()[0],node=l.split()[1],event=l.split()[2],active=True)
         except ValueError as error:
             showerror(title='Error',message=error)
             
@@ -210,7 +248,8 @@ class PlotDialog(tk.Toplevel, object):
     def __init__(self,parent):
         super().__init__(parent)
         self.title("Data")
-
+        self.parent=parent
+        
         plt.rcParams["axes.titlelocation"] = 'right'
         overlap = {name for name in mcolors.CSS4_COLORS
                    if f'xkcd:{name}' in mcolors.XKCD_COLORS}
@@ -242,10 +281,11 @@ class PlotDialog(tk.Toplevel, object):
         
         for i,(t,d) in enumerate(zip(ts,data)):
             space= space + '  '*(len(d)+1) if i>0 else ''
-            self.ax[i].set_title(d+space,color=self.colors[i],ha='right',fontsize='large')                                
-            self.ax[i].tick_params(axis='y', colors=self.colors[i], labelsize='large',rotation=90)
+            col=parent.cfg.get_style(d,"line_color") if parent.cfg.get_style(d,"line_color") is not None else self.colors[i]
+            self.ax[i].set_title(d+space,color=col,ha='right',fontsize='large')                                
+            self.ax[i].tick_params(axis='y', colors=col, labelsize='large',rotation=90)
             tstamps=parent.df[t].apply(lambda x: datetime.fromtimestamp(x) if x==x else x)
-            self.ax[i].plot(tstamps,parent.df[d],c=self.colors[i],label=d)
+            self.ax[i].plot(tstamps,parent.df[d],c=col,label=d)
 
             if i%2==0:
                 self.ax[i].yaxis.tick_left()
@@ -268,6 +308,7 @@ class PlotDialog(tk.Toplevel, object):
         
 class MyToolbar(NavigationToolbar2Tk):
   def __init__(self, figure_canvas, window):
+      self.window=window
       self.toolitems = [*NavigationToolbar2Tk.toolitems]
       self.toolitems.insert(
           [name for name, *_ in self.toolitems].index("Subplots") + 1,
@@ -288,6 +329,7 @@ class MyToolbar(NavigationToolbar2Tk):
               ax.get_lines()[0].set_color(self.edit.colselect.get())
               ax.tick_params(colors=self.edit.colselect.get(), which='both',axis='y')
               ax.set_title(ax.get_title('right'),color=self.edit.colselect.get(),ha='right',fontsize='large')
+              self.window.parent.cfg.update_device(device=item,line_color=self.edit.colselect.get())
           ymin = self.edit.yminselect.get()
           ymax = self.edit.ymaxselect.get()
           if ymin != '' and ymax !='' and float(ymax)>float(ymin):
