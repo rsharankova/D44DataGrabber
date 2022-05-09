@@ -96,7 +96,8 @@ def fetch_data(args_dict):
     URL = "http://www-ad.fnal.gov/cgi-bin/acl.pl?acl=logger_get/date_format='utc_seconds'/ignore_db_format/start=\""+args_dict['starttime']+"\"/end=\""+args_dict['stoptime']+"\""
 
     df = pd.DataFrame()
-    for deviceName, node, evt in args_dict['paramlist']:
+    status = [None]*len(args_dict['paramlist'])
+    for j,(deviceName, node, evt) in enumerate(args_dict['paramlist']):
 
         tempURL = URL
         # Node
@@ -112,12 +113,13 @@ def fetch_data(args_dict):
         # Download device data to a string
         response = urlopen(tempURL)
         if response is None:
-            if args_dict['debug']: print (tempURL+"\n gto no reponse.")
+            if args_dict['debug']: print (tempURL+"\n got no reponse.")
             continue
 
         str1 = response.read().decode('utf-8').split('\n')
-        if str1.count('No values'): 
-            if args_dict['debug']: print (tempURL+"\n "+str1)
+        if str1[0].find('No values') !=-1: 
+            if args_dict['debug']: print (tempURL+"\n "+str1[0])
+            status[j] = str1[0]
             continue
 
         ts1 = []
@@ -135,6 +137,7 @@ def fetch_data(args_dict):
                             deviceName: [float(d) for d in data1]})
         if df.empty:
             df=dfloc
+            
         else:
             df=df.merge(dfloc,how="outer",left_index=True,right_index=True)
 
@@ -142,7 +145,7 @@ def fetch_data(args_dict):
     if args_dict['debug']:
         print(df)
         
-    return df
+    return status,df
 
 def save_to_file(args_dict, df, nameoverride=''):
     if nameoverride !='':
@@ -157,7 +160,7 @@ def main():
     args_dict = {'debug':False, 'starttime':'', 'stoptime':'', 'outdir':'', 'paramlist':[]}
     parse_args(args_dict)
 
-    df = fetch_data(args_dict)
+    status,df = fetch_data(args_dict)
     save_to_file(args_dict,df,'./DataLogger.csv')
 
 if __name__ == "__main__":

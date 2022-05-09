@@ -1,3 +1,0 @@
-B:CHGB15 Bclk e,15,e,38
-B:BLCHG0 Bstr Event
-G:TLGBDF Bstr Event

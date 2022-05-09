@@ -17,7 +17,6 @@ try:
     
     from matplotlib.backends.backend_tkagg import (
     FigureCanvasTkAgg, NavigationToolbar2Tk)
-    from matplotlib.backend_bases import key_press_handler
     from matplotlib.figure import Figure
     import matplotlib.colors as mcolors
     from matplotlib import pyplot as plt
@@ -208,7 +207,10 @@ class MainFrame(ttk.Frame):
         self.args_dict['debug'] = True
     
         # fetch data
-        self.df = data_grabber.fetch_data(self.args_dict)
+        status,self.df = data_grabber.fetch_data(self.args_dict)
+        for st in status:
+            if st:
+                showwarning('Warning','%s'%st)
         
     def plot_data(self):
         plotWin = PlotDialog(self)
@@ -402,8 +404,6 @@ class DataGrabber(tk.Tk):
                 #self.geometry('500x500')
                 self.resizable(True,True)
 
-                self.args_dict = {'debug':False, 'starttime':'', 'stoptime':'', 'outdir':'', 'paramlist':[]}
-                self.df = None
 
 if __name__ =="__main__":
         app = DataGrabber()
