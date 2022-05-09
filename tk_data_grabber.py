@@ -74,7 +74,6 @@ class MainFrame(ttk.Frame):
         self.enddate = datetime.now()
         self.startdate = self.enddate - timedelta(days=1)
         self.args_dict = {'debug':False, 'starttime':'', 'stoptime':'', 'outdir':'', 'paramlist':[]}
-        #self.args_dict = container.args_dict
         self.df = None
         
         self.startcell=tk.Frame(self)
@@ -177,7 +176,7 @@ class MainFrame(ttk.Frame):
             self.devlist.delete(dev)
             
     def load_config(self):
-        filename=fd.askopenfilename()
+        filename=fd.askopenfilename(initialdir = os.getcwd(), filetypes = [('','*.json')])
         if filename=="":
             return
         self.cfg.load_config(filename)
@@ -187,7 +186,7 @@ class MainFrame(ttk.Frame):
             self.devlist.insert(parent='',index='end',iid=len(self.devlist.get_children()),text='',values=val)
 
     def save_config(self):
-        filename=fd.asksaveasfilename(defaultextension=".json")
+        filename=fd.asksaveasfilename(defaultextension=".json",initialdir = os.getcwd(), filetypes = [('','*.json')])
         if filename=="":
             return
         self.cfg.save_config(filename)
