@@ -167,19 +167,19 @@ class MainFrame(ttk.Frame):
         self.device.select_range(l,tk.END)
 
     def fill_node_event(self,event):
-        for dne in self.cfg.get_list_of_devices(all=True):
-            if self.device.get().upper()==dne[0]:
-                self.node.delete(0,tk.END)
-                self.node.insert(0,dne[1])
-                self.event.delete(0,tk.END)
-                self.event.insert(0,dne[2])
-            
+        self.node['values']=['%s %s'%(n,e) for (n,e) in data_grabber.find_nodes(self.device.get())]
+        if len(self.node['values'])==0:
+            return
+        self.node.set(self.node['values'][0])
+        self.node.select_range(0,tk.END)
+        self.node.icursor(tk.END)
+        
     def add_device(self):
         if "Device" in self.device.get():
             return
         self.devlist.insert(parent='',index='end',iid=len(self.devlist.get_children()),text='',
-                       values=(self.device.get().upper(),self.node.get(),self.event.get()))
-        self.cfg.update_device(device=self.device.get().upper(),node=self.node.get(),event=self.event.get(),active=True)
+                       values=(self.device.get().upper(),self.node.get().split()[0],self.node.get().split()[1]))
+        self.cfg.update_device(device=self.device.get().upper(),node=self.node.get().split()[0],event=self.node.get().split()[1],active=True)
         
     def remove_device(self):
         selected_devs = self.devlist.selection()        
