@@ -29,8 +29,11 @@ class MainFrame(ttk.Frame):
     def __init__(self, container):
         super().__init__(container)
 
-        self.cfg=config.config()
+        self.columnconfigure(0, weight=1)
+        self.rowconfigure(0, weight=1)
         
+        self.cfg=config.config()
+
         devlist_scroll=tk.Scrollbar(self)
         self.devlist=ttk.Treeview(self,yscrollcommand=devlist_scroll.set)
         devlist_scroll.config(command=self.devlist.yview)
@@ -46,13 +49,15 @@ class MainFrame(ttk.Frame):
         self.devlist.heading("event",text="Event",anchor=tk.CENTER)
         self.devlist.grid(column=0,row=0,columnspan=3,rowspan=2,sticky = tk.NSEW)
         
-        self.device=tk.Entry(self,width=16)
+        self.devcell = tk.Frame(self)
+        self.device=tk.Entry(self.devcell,width=16)
         self.device.insert(0,'Device')
-        self.device.grid(column=0,row=2)
+        self.device.grid(column=0,row=0)
         self.device.bind("<KeyRelease>",self.fill_device)
         self.device.bind("<FocusIn>",lambda x: self.device.selection_range(0, tk.END))
         self.device.bind("<FocusOut>",self.fill_node_event)
-        
+
+        '''
         self.node=tk.Entry(self,width=16)
         self.node.insert(0,'Node')
         self.node.grid(column=1,row=2)
@@ -61,12 +66,20 @@ class MainFrame(ttk.Frame):
         self.event.insert(0,'Event')
         self.event.grid(column=2,row=2)
         self.event.bind("<FocusIn>",lambda x: self.event.selection_range(0, tk.END))
-
+        '''
+        #nodes = data_grabber.find_nodes(devicename)
+        #nodelist = ['%s\t%s'%(n,e) for (n,e) in nodes]
+        nodelist = []
+        self.node = ttk.Combobox(self.devcell, values=nodelist, width=30, justify='left')
+        self.node.set('Node\tEvent')
+        self.node.grid(column=1,row=0)
+        self.devcell.grid(column=0,row=2,columnspan=3, sticky= tk.W + tk.E, padx=10,pady=10)
+        
         self.buttoncell1 = tk.Frame(self)
         self.buttoncell1.grid(column=0, row=3, columnspan = 3, padx=10, pady=10, sticky=tk.W)
         
         ttk.Button(self.buttoncell1, text="Add to list", command=self.add_device).grid(column=0, row=0, padx=5, pady=5)
-        ttk.Button(self.buttoncell1, text="Remove from list", command=self.remove_device).grid(column=1, row=0, padx=5, pady=5)
+        ttk.Button(self.buttoncell1, text="Remove", command=self.remove_device).grid(column=1, row=0, padx=5, pady=5)
         ttk.Button(self.buttoncell1, text="Load config", command=self.load_config).grid(column=2, row=0, padx=5, pady=5)
         ttk.Button(self.buttoncell1, text="Save config", command=self.save_config).grid(column=3, row=0, padx=5, pady=5)
         
@@ -76,59 +89,59 @@ class MainFrame(ttk.Frame):
         self.df = None
         
         self.startcell=tk.Frame(self)
-        self.startcell.grid(column=0,row=4,columnspan=3, padx=10, pady=10, sticky=tk.W)
+        self.startcell.grid(column=0,row=4,columnspan=3, padx=10, pady=10, sticky=tk.W + tk.E)
         
         self.startdatelabel=tk.Label(self.startcell,text="Start:")
-        self.startdatelabel.grid(column=0,row=0, sticky=tk.W)
+        self.startdatelabel.grid(column=0,row=0, sticky=tk.W, padx=5, pady=5)
 
-        self.startdatecal = DateEntry(self.startcell,width=10,bg='white',fg='black',borderwidth=2)
+        self.startdatecal = DateEntry(self.startcell,width=11,bg='white',fg='black',borderwidth=2)
         self.startdatecal.set_date(self.startdate)
-        self.startdatecal.grid(column=1,row=0)        
+        self.startdatecal.grid(column=1,row=0, padx=5, pady=5)        
         self.startdatecal.bind("<<DateEntrySelected>>", self.update_startdate)
 
         self.starth_spin = ttk.Spinbox(self.startcell, from_=0,to=23, width=4, wrap=True, command=self.update_starttime)
-        self.starth_spin.grid(column=2,row=0)
+        self.starth_spin.grid(column=2,row=0, padx=5, pady=5)
         self.starth_spin.set(self.startdate.hour)
         self.startm_spin = ttk.Spinbox(self.startcell, from_=0,to=59, width=4, wrap=True, command=self.update_starttime)
-        self.startm_spin.grid(column=3,row=0)
+        self.startm_spin.grid(column=3,row=0, padx=5, pady=5)
         self.startm_spin.set(self.startdate.minute)
 
         self.intvar = tk.StringVar()
         interval_opts = ['seconds=1','minutes=1','hours=1','days=1','weeks=1','months=1']
-        self.interval = ttk.Combobox(self.startcell, textvar=self.intvar, values=interval_opts, width=8,justify='center')
+        self.interval = ttk.Combobox(self.startcell, textvar=self.intvar, values=interval_opts, width=10,justify='center')
         self.interval.option_add('*TCombobox*Listbox.Justify', 'center')
         self.interval.set('Interval')
         self.intvar.trace('w',self.set_start_interval)
         #self.interval.bind('<<ComboboxSelected>>',self.set_start_interval)        
-        self.interval.grid(column=4, row=0)
+        self.interval.grid(column=4, row=0, padx=5)
         
         self.endcell=tk.Frame(self)
-        self.endcell.grid(column=0,row=5, columnspan=3, sticky=tk.W, padx=10, pady=10)
+        self.endcell.grid(column=0,row=5, columnspan=3, sticky=tk.W + tk.E, padx=10, pady=10)
 
         self.enddatelabel=tk.Label(self.endcell,text="  End:")
-        self.enddatelabel.grid(column=0,row=0, sticky=tk.E)
+        self.enddatelabel.grid(column=0,row=0, sticky=tk.E, padx=5, pady=5)
          
-        self.enddatecal = DateEntry(self.endcell,width=10,bg='white',fg='black',borderwidth=2)
+        self.enddatecal = DateEntry(self.endcell,width=11,bg='white',fg='black',borderwidth=2)
         self.enddatecal.set_date(self.enddate)
-        self.enddatecal.grid(column=1,row=0)
+        self.enddatecal.grid(column=1,row=0, padx=5, pady=5)
         self.enddatecal.bind("<<DateEntrySelected>>", self.update_enddate)
 
         self.endh_spin = ttk.Spinbox(self.endcell, from_=0,to=23, width=4, wrap=True, command=self.update_endtime)
-        self.endh_spin.grid(column=2,row=0)
+        self.endh_spin.grid(column=2,row=0, padx=5, pady=5)
         self.endh_spin.set(self.enddate.hour)
         self.endm_spin = ttk.Spinbox(self.endcell, from_=0,to=59, width=4,wrap=True, command=self.update_endtime)
-        self.endm_spin.grid(column=3,row=0)
+        self.endm_spin.grid(column=3,row=0, padx=5, pady=5)
         self.endm_spin.set(self.enddate.minute)
 
-        ttk.Button(self.endcell, text="Now", command=self.set_end_now).grid(column=4, row=0)
+        ttk.Button(self.endcell, text="Now", command=self.set_end_now, width=8).grid(column=4, row=0, padx=5, pady=5)
 
         self.buttoncell2 = tk.Frame(self)
-        self.buttoncell2.grid(column=0, row=6, columnspan = 3, padx=10, pady=10, sticky=tk.W)
+        self.buttoncell2.grid(column=0, row=6, columnspan = 3, padx=10, pady=10, sticky=tk.W + tk.E)
 
-        ttk.Button(self.buttoncell2, text="Get data", command=self.get_data).grid(column=0, row=0, padx=5, pady=5)
-        ttk.Button(self.buttoncell2, text="Plot data", command=self.plot_data).grid(column=1, row=0, padx=5, pady=5)
-        ttk.Button(self.buttoncell2, text="Save to file", command=self.save_to_file).grid(column=2, row=0, padx=5, pady=5)
-        ttk.Button(self.buttoncell2, text="Quit", command=container.destroy).grid(column=3, row=0)
+        ttk.Button(self.buttoncell2, text="Get data", command=self.get_data).grid(column=0, row=0, padx=7, pady=5)
+        ttk.Button(self.buttoncell2, text="Plot data", command=self.plot_data).grid(column=1, row=0, padx=7, pady=5)
+        ttk.Button(self.buttoncell2, text="Save to file", command=self.save_to_file).grid(column=2, row=0, padx=7, pady=5)
+        ttk.Button(self.buttoncell2, text="Quit", command=container.destroy).grid(column=3, row=0, padx=7, pady=5)
 
         self.grid(padx=10, pady=10, sticky=tk.NSEW)
 
@@ -413,12 +426,14 @@ class EditDialog(tk.Toplevel, object):
 
     
 class DataGrabber(tk.Tk):
-        def __init__(self):
-                super().__init__()
-
-                self.title('D44 Lite')
-                #self.geometry('500x500')
-                self.resizable(True,True)
+    def __init__(self):
+        super().__init__()
+        self.columnconfigure(0, weight=1)
+        self.rowconfigure(0, weight=1)
+        
+        self.title('D44 Lite')
+        #self.geometry('500x500')
+        self.resizable(True,True)
 
 
 if __name__ =="__main__":

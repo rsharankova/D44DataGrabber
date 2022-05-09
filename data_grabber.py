@@ -1,4 +1,4 @@
-import os
+import os, re
 from datetime import datetime, timedelta
 from urllib.request import urlopen
 import argparse
@@ -90,6 +90,21 @@ def load_paramlist(textfilename='ParamList.txt', debug=False):
     if debug: print (devlist)
     return devlist
 
+
+def find_nodes(deviceName):
+
+    nodelist = []
+    tempURL= "https://www-ad.fnal.gov/cgi-bin/acl.pl?acl=show/whereLogged+%s"%deviceName
+    # Download node data to a string                                                                                                                      
+    response = urlopen(tempURL)
+    lines = response.read().decode('utf-8').split('\n')
+    for line in lines:
+        if line.find('%s'%deviceName) !=-1:
+            cols = line.split(' ') # Name, Node, List (2 cols), Data Event
+            if re.match(r'(Sec|Min|Hz|Event)',cols[2]):
+                nodelist.append((cols[1],cols[-1]))                   
+
+    return nodelist
 
 def fetch_data(args_dict):
     # logger_get ACL command documentation: https://www-bd.fnal.gov/issues/wiki/ACLCommandLogger_get
