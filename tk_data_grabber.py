@@ -46,7 +46,6 @@ class MainFrame(ttk.Frame):
         self.devlist.heading("node",text="Node",anchor=tk.CENTER)
         self.devlist.heading("event",text="Event",anchor=tk.CENTER)
         self.devlist.grid(column=0,row=0,columnspan=3,rowspan=2,sticky = tk.NSEW)
-        self.restore_cfg()
         
         self.device=tk.Entry(self,width=16)
         self.device.insert(0,'Device')
@@ -69,8 +68,9 @@ class MainFrame(ttk.Frame):
         
         ttk.Button(self.buttoncell1, text="Add to list", command=self.add_device).grid(column=0, row=0, padx=5, pady=5)
         ttk.Button(self.buttoncell1, text="Remove from list", command=self.remove_device).grid(column=1, row=0, padx=5, pady=5)
-        ttk.Button(self.buttoncell1, text="Load parameter list", command=self.open_file).grid(column=3, row=0, padx=5, pady=5)
-
+        ttk.Button(self.buttoncell1, text="Load config", command=self.load_config).grid(column=2, row=0, padx=5, pady=5)
+        ttk.Button(self.buttoncell1, text="Save config", command=self.save_config).grid(column=3, row=0, padx=5, pady=5)
+        
         self.enddate = datetime.now()
         self.startdate = self.enddate - timedelta(days=1)
         self.args_dict = {'debug':False, 'starttime':'', 'stoptime':'', 'outdir':'', 'paramlist':[]}
@@ -132,11 +132,7 @@ class MainFrame(ttk.Frame):
         ttk.Button(self.buttoncell2, text="Save to file", command=self.save_to_file).grid(column=2, row=0, padx=5, pady=5)
         ttk.Button(self.buttoncell2, text="Quit", command=container.destroy).grid(column=3, row=0)
 
-        self.bind("<Destroy>", self.close_win)
         self.grid(padx=10, pady=10, sticky=tk.NSEW)
-
-    def close_win(self,event):
-        self.cfg.save_config()
 
     def fill_device(self,event):
         if event.keysym in ["BackSpace","Left","Right","Shift_L","Shift_R","Tab"]:
@@ -156,7 +152,6 @@ class MainFrame(ttk.Frame):
         self.currdevice=devs[currindex] if len(devs)>0 else ""
         self.device.delete(0,tk.END)
         self.device.insert(0,devtxt+self.currdevice[l:])
-        self.device.update()
         self.device.icursor(l)
         self.device.select_range(l,tk.END)
 
@@ -181,21 +176,22 @@ class MainFrame(ttk.Frame):
             self.cfg.update_device(device=self.devlist.item(dev)["values"][0],active=False)
             self.devlist.delete(dev)
             
-    def restore_cfg(self):
+    def load_config(self):
+        filename=fd.askopenfilename()
+        if filename=="":
+            return
+        self.cfg.load_config(filename)
+        for item in self.devlist.get_children():
+            self.devlist.delete(item)
         for val in self.cfg.get_list_of_devices():
             self.devlist.insert(parent='',index='end',iid=len(self.devlist.get_children()),text='',values=val)
-            
-    def open_file(self):
-        filename = fd.askopenfilename()
-        try:
-            f=open(filename,'r')
-            for l in f:
-                self.devlist.insert(parent='',index='end',iid=len(self.devlist.get_children()),text='',
-                                    values=(l.split()))
-                self.cfg.update_device(device=l.split()[0],node=l.split()[1],event=l.split()[2],active=True)
-        except ValueError as error:
-            showerror(title='Error',message=error)
-            
+
+    def save_config(self):
+        filename=fd.asksaveasfilename(defaultextension=".json")
+        if filename=="":
+            return
+        self.cfg.save_config(filename)
+
     def get_data(self):
         print("Start",self.startdate.isoformat(timespec='seconds'))
         print("End",self.enddate.isoformat(timespec='seconds'))
@@ -404,7 +400,7 @@ class DataGrabber(tk.Tk):
                 super().__init__()
 
                 self.title('D44 Lite')
-                self.geometry('500x500')
+                #self.geometry('500x500')
                 self.resizable(True,True)
 
                 self.args_dict = {'debug':False, 'starttime':'', 'stoptime':'', 'outdir':'', 'paramlist':[]}

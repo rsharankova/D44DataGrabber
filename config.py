@@ -2,10 +2,8 @@ import json
 
 class config():
     def __init__(self):
-        self.cfg_file_name="d44liteconfig.json"
         self.properties=["active","node","event","line_style","line_color","marker_style","marker_color"]
-        
-        self.load_config(self.cfg_file_name)
+        self.cfgdict={}
         
     def load_config(self,config_file):
         try:
@@ -14,8 +12,8 @@ class config():
         except IOError:
             self.cfgdict={}
 
-    def save_config(self):
-        with open(self.cfg_file_name, "w") as fout:
+    def save_config(self,config_file):
+        with open(config_file, "w") as fout:
             json.dump(self.cfgdict, fout)
 
     def get_style(self,device, what):
