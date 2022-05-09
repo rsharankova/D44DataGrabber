@@ -94,7 +94,7 @@ class MainFrame(ttk.Frame):
         self.startm_spin.set(self.startdate.minute)
 
         self.intvar = tk.StringVar()
-        interval_opts = ['minutes=1','hours=1','days=1','weeks=1','months=1']
+        interval_opts = ['seconds=1','minutes=1','hours=1','days=1','weeks=1','months=1']
         self.interval = ttk.Combobox(self.startcell, textvar=self.intvar, values=interval_opts, width=8,justify='center')
         self.interval.option_add('*TCombobox*Listbox.Justify', 'center')
         self.interval.set('Interval')
@@ -335,10 +335,18 @@ class MyToolbar(NavigationToolbar2Tk):
               ax.tick_params(colors=self.edit.colselect.get(), which='both',axis='y')
               ax.set_title(ax.get_title('right'),color=self.edit.colselect.get(),ha='right',fontsize='large')
               self.window.parent.cfg.update_device(device=item,line_color=self.edit.colselect.get())
+          if self.edit.lineselect.get() !='':
+              ax.get_lines()[0].set_linestyle(self.edit.lineselect.get())
+              self.window.parent.cfg.update_device(device=item,line_style=self.edit.lineselect.get())
+          if self.edit.markerselect.get() !='':
+              ax.get_lines()[0].set_marker(self.edit.markerselect.get())
+              self.window.parent.cfg.update_device(device=item,marker_style=self.edit.markerselect.get())
+
           ymin = self.edit.yminselect.get()
           ymax = self.edit.ymaxselect.get()
           if ymin != '' and ymax !='' and float(ymax)>float(ymin):
               ax.set_ylim(float(ymin),float(ymax))
+        
           self.canvas.draw()
 
 class EditDialog(tk.Toplevel, object):
@@ -391,9 +399,17 @@ class EditDialog(tk.Toplevel, object):
         self.ymaxselect.insert(0,'0.0')
         self.ymaxselect.bind("<FocusIn>",lambda x: self.ymaxselect.selection_range(0, tk.END))    
         self.ymaxselect.grid(column=1,row=3)
+        self.linelabel = tk.Label(self.editframe,text='Line style:')
+        self.linelabel.grid(column=0,row=4)
+        self.lineselect = ttk.Combobox(self.editframe, values = ['solid','dashed','dashdot','dotted','none'], width=10, justify='left' )
+        self.lineselect.grid(column=1,row=4)
+        self.markerlabel = tk.Label(self.editframe,text='Marker style:')
+        self.markerlabel.grid(column=0,row=5)
+        self.markerselect = ttk.Combobox(self.editframe, values = ['','.','x','o','^','v','<','>','*','s','p','h','+','P','d','D'], width=10, justify='left' )
+        self.markerselect.grid(column=1,row=5)
 
-        ttk.Button(self.editframe, text="Apply style", command=parent.apply_style).grid(column=0, row=4)
-        ttk.Button(self.editframe, text="Close", command=self.destroy).grid(column=1, row=4)
+        ttk.Button(self.editframe, text="Apply style", command=parent.apply_style).grid(column=0, row=6)
+        ttk.Button(self.editframe, text="Close", command=self.destroy).grid(column=1, row=6)
 
     
 class DataGrabber(tk.Tk):
