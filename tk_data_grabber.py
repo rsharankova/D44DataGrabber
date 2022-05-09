@@ -139,18 +139,26 @@ class MainFrame(ttk.Frame):
         self.cfg.save_config()
 
     def fill_device(self,event):
-        if event.keysym in ["BackSpace","Left","Right","Up","Down","Shift_L","Shift_R","Tab"]:
+        if event.keysym in ["BackSpace","Left","Right","Shift_L","Shift_R","Tab"]:
             return
 
-        devs=[e[0] for e in self.cfg.get_list_of_devices(all=True)]
-        for dev in devs:
-            if dev.find(self.device.get().upper())==0:
-                devtxt=self.device.get()
-                l=len(devtxt)
-                self.device.delete(0,l)
-                self.device.insert(0,devtxt+dev[l:])
-                self.device.icursor(l)
-                self.device.select_range(l,len(dev))
+        devtxt=self.device.get()[:self.device.index(tk.INSERT)]
+        l=len(devtxt)
+        devs=[e[0] for e in self.cfg.get_list_of_devices(all=True) if e[0].find(devtxt.upper())==0]
+            
+        currindex=devs.index(self.currdevice) if hasattr(self,"currdevice") and self.currdevice in devs else 0
+
+        if event.keysym=="Up" and currindex>0:
+            currindex-=1
+        if event.keysym=="Down" and currindex<len(devs)-1:
+            currindex+=1
+
+        self.currdevice=devs[currindex] if len(devs)>0 else ""
+        self.device.delete(0,tk.END)
+        self.device.insert(0,devtxt+self.currdevice[l:])
+        self.device.update()
+        self.device.icursor(l)
+        self.device.select_range(l,tk.END)
 
     def fill_node_event(self,event):
         for dne in self.cfg.get_list_of_devices(all=True):
