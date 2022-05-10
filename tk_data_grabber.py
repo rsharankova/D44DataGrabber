@@ -20,6 +20,7 @@ try:
     from matplotlib.figure import Figure
     import matplotlib.colors as mcolors
     from matplotlib import pyplot as plt
+    from matplotlib.ticker import MaxNLocator
     
 except ImportError:
     sys.exit('''Missing dependencies. First run 
@@ -269,19 +270,22 @@ class PlotDialog(tk.Toplevel, object):
         self.parent=parent
         
         plt.rcParams["axes.titlelocation"] = 'right'
+        plt.style.use('dark_background')
         overlap = {name for name in mcolors.CSS4_COLORS
                    if f'xkcd:{name}' in mcolors.XKCD_COLORS}
 
-        overlap.difference_update(['aqua','white','ivory','lime','chocolate','gold'])
+        overlap.difference_update(['aqua','black','white','lime','chocolate','gold'])
         self.colors = [mcolors.XKCD_COLORS[f'xkcd:{color_name}'].upper() for color_name in sorted(overlap)]
         self.colornames = sorted(overlap)
         
         ts = [key for key in list(parent.df.keys()) if key.find('tstamp')!=-1]
         data = [key for key in list(parent.df.keys()) if key.find('tstamp')==-1]
         
-        self.fig = Figure(figsize=(10,5))
+        self.fig = Figure(figsize=(8,8)) # i like squares
         self.ax = [None]*len(data)
         self.ax[0] = self.fig.add_subplot(111)
+        self.ax[0].xaxis.grid(True, which='major')
+        self.ax[0].yaxis.grid(True, which='major')
         for i in range(1,len(data)):
             self.ax[i] = self.ax[0].twinx()
         self.ax[0].set_xlabel("time")
@@ -298,6 +302,7 @@ class PlotDialog(tk.Toplevel, object):
         self.toolbar.grid(column=0, row=1, columnspan=3, sticky = tk.W + tk.E)
         
         for i,(t,d) in enumerate(zip(ts,data)):
+            self.ax[i].yaxis.set_major_locator(MaxNLocator(5))
             space= space + '  '*(len(d)+1) if i>0 else ''
             col=parent.cfg.get_style(d,"line_color") if parent.cfg.get_style(d,"line_color") is not None else self.colors[i]
             self.ax[i].set_title(d+space,color=col,ha='right',fontsize='large')                                

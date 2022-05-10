@@ -101,7 +101,7 @@ def find_nodes(deviceName):
     for line in lines:
         if line.find('%s'%deviceName) !=-1:
             cols = line.split() # Name, Node, List (2 cols), Data Event
-            if re.match(r'(Sec|Min|Hz|Event)',cols[2]):
+            if re.match(r'.*(Sec|Min|Hz|Event).*',cols[2]+cols[3]):
                 nodelist.append((cols[1],cols[-1]))                   
 
     return nodelist
