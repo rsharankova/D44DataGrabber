@@ -34,7 +34,8 @@ class MainFrame(ttk.Frame):
         self.rowconfigure(0, weight=1)
         
         self.cfg=config.config()
-
+        self.acnet_devs={}
+        
         devlist_scroll=tk.Scrollbar(self)
         self.devlist=ttk.Treeview(self,yscrollcommand=devlist_scroll.set)
         devlist_scroll.config(command=self.devlist.yview)
@@ -173,18 +174,25 @@ class MainFrame(ttk.Frame):
         self.device.select_range(l,tk.END)
     '''
     def fill_device(self,event):
-        if event.keysym in ["BackSpace","Left","Right","Shift_R","Tab"]:
+        if event.keysym in ["BackSpace","Left","Right","Shift_L","Shift_R","Tab"]:
             return
-
-        #something is not working...
-        if event.keysym in ["Shift_L"]:
-            self.device['values']=['%s'%dev for dev in data_grabber.find_devices(self.device.get())]
-            if len(self.device['values'])==0:
-                return
-            self.device.set(self.device['values'][0])
-            self.device.select_range(0,tk.END)
-            self.device.icursor(tk.END)
-
+        
+        alldevlist=[]
+        if self.device.get()[0].upper() in self.acnet_devs:
+            alldevlist=self.acnet_devs[self.device.get()[0].upper()]
+        else:
+            alldevlist=data_grabber.find_devices(self.device.get()[0].upper())
+            self.acnet_devs[self.device.get()[0].upper()]=alldevlist
+        
+        devtxt=self.device.get()[:self.device.index(tk.INSERT)]
+        l=len(devtxt)
+        self.device['values']=[e for e in alldevlist if e.find(devtxt.upper())==0]
+        if len(self.device['values'])==0:
+            return
+        self.device.delete(0,tk.END)
+        self.device.insert(0,devtxt+self.device['values'][0][l:])
+        self.device.icursor(l)
+        self.device.select_range(l,tk.END)     
     
     def fill_node_event(self,event):
         self.node['values']=['%s %s'%(n,e) for (n,e) in data_grabber.find_nodes(self.device.get())]
