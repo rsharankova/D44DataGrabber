@@ -195,6 +195,7 @@ class MainFrame(ttk.Frame):
         self.device.select_range(l,tk.END)     
     
     def fill_node_event(self,event):
+        self.device.set(self.device.get().upper())
         self.node['values']=['%s %s'%(n,e) for (n,e) in data_grabber.find_nodes(self.device.get())]
         if len(self.node['values'])==0:
             return
