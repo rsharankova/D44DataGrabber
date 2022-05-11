@@ -95,7 +95,7 @@ def find_nodes(deviceName):
 
     nodelist = []
     tempURL= "https://www-ad.fnal.gov/cgi-bin/acl.pl?acl=show/whereLogged+%s"%deviceName
-    # Download node data to a string                                                                                                                      
+
     response = urlopen(tempURL)
     lines = response.read().decode('utf-8').split('\n')
     for line in lines:
@@ -105,6 +105,19 @@ def find_nodes(deviceName):
                 nodelist.append((cols[1],cols[-1]))                   
 
     return nodelist
+
+def find_devices(partialName):
+
+    devlist = []
+    tempURL= 'https://www-ad.fnal.gov/cgi-bin/acl.pl?acl=list/notitle/noheadings+name=%s'%partialName+'%+"%nm"'
+
+    response = urlopen(tempURL)
+    lines = response.read().decode('utf-8').split('\n')
+    for line in lines:
+        devlist.append(line.strip())                   
+
+    return devlist
+
 
 def fetch_data(args_dict):
     # logger_get ACL command documentation: https://www-bd.fnal.gov/issues/wiki/ACLCommandLogger_get

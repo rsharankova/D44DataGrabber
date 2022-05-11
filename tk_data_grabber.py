@@ -20,7 +20,7 @@ try:
     from matplotlib.figure import Figure
     import matplotlib.colors as mcolors
     from matplotlib import pyplot as plt
-    from matplotlib.ticker import MaxNLocator
+    import matplotlib.ticker as mt
     
 except ImportError:
     sys.exit('''Missing dependencies. First run 
@@ -51,13 +51,20 @@ class MainFrame(ttk.Frame):
         self.devlist.grid(column=0,row=0,columnspan=3,rowspan=2,sticky = tk.NSEW)
         
         self.devcell = tk.Frame(self)
+        '''
         self.device=tk.Entry(self.devcell,width=16)
         self.device.insert(0,'Device')
         self.device.grid(column=0,row=0)
         self.device.bind("<KeyRelease>",self.fill_device)
         self.device.bind("<FocusIn>",lambda x: self.device.selection_range(0, tk.END))
         self.device.bind("<FocusOut>",self.fill_node_event)
-
+        '''
+        self.device = ttk.Combobox(self.devcell, values=[], width=16, justify='left')
+        self.device.set('Device')
+        self.device.grid(column=0,row=0)
+        self.device.bind("<KeyRelease>",self.fill_device)
+        self.device.bind("<FocusIn>",lambda x: self.device.selection_range(0, tk.END))
+        self.device.bind("<FocusOut>",self.fill_node_event)
         '''
         self.node=tk.Entry(self,width=16)
         self.node.insert(0,'Node')
@@ -68,10 +75,7 @@ class MainFrame(ttk.Frame):
         self.event.grid(column=2,row=2)
         self.event.bind("<FocusIn>",lambda x: self.event.selection_range(0, tk.END))
         '''
-        #nodes = data_grabber.find_nodes(devicename)
-        #nodelist = ['%s\t%s'%(n,e) for (n,e) in nodes]
-        nodelist = []
-        self.node = ttk.Combobox(self.devcell, values=nodelist, width=30, justify='left')
+        self.node = ttk.Combobox(self.devcell, values=[], width=30, justify='left')
         self.node.set('Node\tEvent')
         self.node.grid(column=1,row=0)
         self.devcell.grid(column=0,row=2,columnspan=3, sticky= tk.W + tk.E, padx=10,pady=10)
@@ -146,6 +150,7 @@ class MainFrame(ttk.Frame):
 
         self.grid(padx=10, pady=10, sticky=tk.NSEW)
 
+    '''
     def fill_device(self,event):
         if event.keysym in ["BackSpace","Left","Right","Shift_L","Shift_R","Tab"]:
             return
@@ -153,7 +158,7 @@ class MainFrame(ttk.Frame):
         devtxt=self.device.get()[:self.device.index(tk.INSERT)]
         l=len(devtxt)
         devs=[e[0] for e in self.cfg.get_list_of_devices(all=True) if e[0].find(devtxt.upper())==0]
-            
+
         currindex=devs.index(self.currdevice) if hasattr(self,"currdevice") and self.currdevice in devs else 0
 
         if event.keysym=="Up" and currindex>0:
@@ -166,7 +171,21 @@ class MainFrame(ttk.Frame):
         self.device.insert(0,devtxt+self.currdevice[l:])
         self.device.icursor(l)
         self.device.select_range(l,tk.END)
+    '''
+    def fill_device(self,event):
+        if event.keysym in ["BackSpace","Left","Right","Shift_R","Tab"]:
+            return
 
+        #something is not working...
+        if event.keysym in ["Shift_L"]:
+            self.device['values']=['%s'%dev for dev in data_grabber.find_devices(self.device.get())]
+            if len(self.device['values'])==0:
+                return
+            self.device.set(self.device['values'][0])
+            self.device.select_range(0,tk.END)
+            self.device.icursor(tk.END)
+
+    
     def fill_node_event(self,event):
         self.node['values']=['%s %s'%(n,e) for (n,e) in data_grabber.find_nodes(self.device.get())]
         if len(self.node['values'])==0:
@@ -302,14 +321,14 @@ class PlotDialog(tk.Toplevel, object):
         self.toolbar.grid(column=0, row=1, columnspan=3, sticky = tk.W + tk.E)
         
         for i,(t,d) in enumerate(zip(ts,data)):
-            self.ax[i].yaxis.set_major_locator(MaxNLocator(5))
             space= space + '  '*(len(d)+1) if i>0 else ''
             col=parent.cfg.get_style(d,"line_color") if parent.cfg.get_style(d,"line_color") is not None else self.colors[i]
             self.ax[i].set_title(d+space,color=col,ha='right',fontsize='large')                                
             self.ax[i].tick_params(axis='y', colors=col, labelsize='large',rotation=90)
             tstamps=parent.df[t].apply(lambda x: datetime.fromtimestamp(x) if x==x else x)
             self.ax[i].plot(tstamps,parent.df[d],c=col,label=d)
-
+            self.ax[i].yaxis.set_major_locator(mt.LinearLocator(5))
+            
             if i%2==0:
                 self.ax[i].yaxis.tick_left()
                 for yl in self.ax[i].get_yticklabels():
