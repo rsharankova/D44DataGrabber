@@ -204,9 +204,9 @@ class MainFrame(ttk.Frame):
         self.node.icursor(tk.END)
         
     def add_device(self):
-        if "Device" in self.device.get():
+        if "DEVICE" in self.device.get().upper():
             return
-        self.devlist.insert(parent='',index='end',iid=len(self.devlist.get_children()),text='',
+        self.devlist.insert(parent='',index='end',text='',
                        values=(self.device.get().upper(),self.node.get().split()[0],self.node.get().split()[1]))
         self.cfg.update_device(device=self.device.get().upper(),node=self.node.get().split()[0],event=self.node.get().split()[1],active=True)
         
@@ -224,7 +224,7 @@ class MainFrame(ttk.Frame):
         for item in self.devlist.get_children():
             self.devlist.delete(item)
         for val in self.cfg.get_list_of_devices():
-            self.devlist.insert(parent='',index='end',iid=len(self.devlist.get_children()),text='',values=val)
+            self.devlist.insert(parent='',index='end',text='',values=val)
 
     def save_config(self):
         filename=fd.asksaveasfilename(defaultextension=".json",initialdir = os.getcwd(), filetypes = [('','*.json')])
