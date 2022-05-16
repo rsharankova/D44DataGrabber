@@ -12,6 +12,7 @@ try:
     from tkinter.messagebox import showerror, showwarning
     from tkcalendar import Calendar, DateEntry
     from datetime import datetime, timedelta
+    from functools import reduce
     import data_grabber
     import config
     
@@ -21,7 +22,7 @@ try:
     import matplotlib.colors as mcolors
     from matplotlib import pyplot as plt
     import matplotlib.ticker as mt
-    
+    import pandas as pd
 except ImportError:
     sys.exit('''Missing dependencies. First run 
     pip install %s '''%(' '.join(missing)))
@@ -39,7 +40,7 @@ class MainFrame(ttk.Frame):
         devlist_scroll=tk.Scrollbar(self)
         self.devlist=ttk.Treeview(self,yscrollcommand=devlist_scroll.set)
         devlist_scroll.config(command=self.devlist.yview)
-        devlist_scroll.grid(column=3,row=0,rowspan=2,sticky=tk.N+tk.S)
+        devlist_scroll.grid(column=1,row=0,sticky=tk.N+tk.S)
         self.devlist['columns']=('device','node','event')
         self.devlist.column("#0",width=0,stretch=tk.NO)
         self.devlist.column("device",anchor=tk.CENTER,width=40)
@@ -49,45 +50,36 @@ class MainFrame(ttk.Frame):
         self.devlist.heading("device",text="Device",anchor=tk.CENTER)
         self.devlist.heading("node",text="Node",anchor=tk.CENTER)
         self.devlist.heading("event",text="Event",anchor=tk.CENTER)
-        self.devlist.grid(column=0,row=0,columnspan=3,rowspan=2,sticky = tk.NSEW)
+        self.devlist.grid(column=0,row=0,sticky = tk.NSEW)
         
         self.devcell = tk.Frame(self)
-        '''
-        self.device=tk.Entry(self.devcell,width=16)
-        self.device.insert(0,'Device')
-        self.device.grid(column=0,row=0)
-        self.device.bind("<KeyRelease>",self.fill_device)
-        self.device.bind("<FocusIn>",lambda x: self.device.selection_range(0, tk.END))
-        self.device.bind("<FocusOut>",self.fill_node_event)
-        '''
-        self.device = ttk.Combobox(self.devcell, values=[], width=16, justify='left')
+        self.devcell.grid(column=0,row=1,columnspan=2, sticky= tk.W + tk.E, padx=10,pady=10)
+        self.devcell.grid_columnconfigure(0,weight=1)
+        self.devcell.grid_columnconfigure(1,weight=1)
+
+        self.device = ttk.Combobox(self.devcell, values=[], justify='left')
         self.device.set('Device')
-        self.device.grid(column=0,row=0)
+        self.device.grid(column=0,row=0,sticky=tk.W+tk.E)
         self.device.bind("<KeyRelease>",self.fill_device)
         self.device.bind("<FocusIn>",lambda x: self.device.selection_range(0, tk.END))
         self.device.bind("<FocusOut>",self.fill_node_event)
-        '''
-        self.node=tk.Entry(self,width=16)
-        self.node.insert(0,'Node')
-        self.node.grid(column=1,row=2)
-        self.node.bind("<FocusIn>",lambda x: self.node.selection_range(0, tk.END))
-        self.event=tk.Entry(self,width=16)
-        self.event.insert(0,'Event')
-        self.event.grid(column=2,row=2)
-        self.event.bind("<FocusIn>",lambda x: self.event.selection_range(0, tk.END))
-        '''
-        self.node = ttk.Combobox(self.devcell, values=[], width=30, justify='left')
+
+        self.node = ttk.Combobox(self.devcell, values=[], justify='left')
         self.node.set('Node\tEvent')
-        self.node.grid(column=1,row=0)
-        self.devcell.grid(column=0,row=2,columnspan=3, sticky= tk.W + tk.E, padx=10,pady=10)
-        
+        self.node.grid(column=1,row=0,columnspan=2,sticky=tk.W+tk.E)
+
         self.buttoncell1 = tk.Frame(self)
-        self.buttoncell1.grid(column=0, row=3, columnspan = 3, padx=10, pady=10, sticky=tk.W)
+        self.buttoncell1.grid(column=0, row=2, columnspan = 2, padx=10, pady=10, sticky=tk.W+tk.E)
         
-        ttk.Button(self.buttoncell1, text="Add to list", command=self.add_device).grid(column=0, row=0, padx=5, pady=5)
-        ttk.Button(self.buttoncell1, text="Remove", command=self.remove_device).grid(column=1, row=0, padx=5, pady=5)
-        ttk.Button(self.buttoncell1, text="Load config", command=self.load_config).grid(column=2, row=0, padx=5, pady=5)
-        ttk.Button(self.buttoncell1, text="Save config", command=self.save_config).grid(column=3, row=0, padx=5, pady=5)
+        ttk.Button(self.buttoncell1, text="Add to list", command=self.add_device   ).grid(column=0, row=0, padx=7, pady=5, sticky=tk.W)
+        ttk.Button(self.buttoncell1, text="Remove"     , command=self.remove_device).grid(column=1, row=0, padx=7, pady=5)
+        ttk.Button(self.buttoncell1, text="Load config", command=self.load_config  ).grid(column=2, row=0, padx=7, pady=5)
+        ttk.Button(self.buttoncell1, text="Save config", command=self.save_config  ).grid(column=3, row=0, padx=7, pady=5, sticky=tk.E)
+
+        self.buttoncell1.grid_columnconfigure(0,weight=1)
+        self.buttoncell1.grid_columnconfigure(1,weight=1)
+        self.buttoncell1.grid_columnconfigure(2,weight=1)
+        self.buttoncell1.grid_columnconfigure(3,weight=1)
         
         self.enddate = datetime.now()
         self.startdate = self.enddate - timedelta(days=1)
@@ -95,10 +87,10 @@ class MainFrame(ttk.Frame):
         self.df = None
         
         self.startcell=tk.Frame(self)
-        self.startcell.grid(column=0,row=4,columnspan=3, padx=10, pady=10, sticky=tk.W + tk.E)
+        self.startcell.grid(column=0,row=3,columnspan=2, padx=10, pady=10, sticky=tk.W + tk.E)
         
         self.startdatelabel=tk.Label(self.startcell,text="Start:")
-        self.startdatelabel.grid(column=0,row=0, sticky=tk.W, padx=5, pady=5)
+        self.startdatelabel.grid(column=0,row=0, padx=5, pady=5, sticky=tk.W)
 
         self.startdatecal = DateEntry(self.startcell,width=11,bg='white',fg='black',borderwidth=2)
         self.startdatecal.set_date(self.startdate)
@@ -106,10 +98,10 @@ class MainFrame(ttk.Frame):
         self.startdatecal.bind("<<DateEntrySelected>>", self.update_startdate)
 
         self.starth_spin = ttk.Spinbox(self.startcell, from_=0,to=23, width=4, wrap=True, command=self.update_starttime)
-        self.starth_spin.grid(column=2,row=0, padx=5, pady=5)
+        self.starth_spin.grid(column=2,row=0, padx=5, pady=5, sticky=tk.E)
         self.starth_spin.set(self.startdate.hour)
         self.startm_spin = ttk.Spinbox(self.startcell, from_=0,to=59, width=4, wrap=True, command=self.update_starttime)
-        self.startm_spin.grid(column=3,row=0, padx=5, pady=5)
+        self.startm_spin.grid(column=3,row=0, padx=5, pady=5, sticky=tk.W)
         self.startm_spin.set(self.startdate.minute)
 
         self.intvar = tk.StringVar()
@@ -119,13 +111,17 @@ class MainFrame(ttk.Frame):
         self.interval.set('Interval')
         self.intvar.trace('w',self.set_start_interval)
         #self.interval.bind('<<ComboboxSelected>>',self.set_start_interval)        
-        self.interval.grid(column=4, row=0, padx=5)
+        self.interval.grid(column=4, row=0, padx=5, sticky=tk.W)
+        self.startcell.grid_columnconfigure(0,weight=1)
+        self.startcell.grid_columnconfigure(1,weight=1)
+        self.startcell.grid_columnconfigure(2,weight=1)
+        self.startcell.grid_columnconfigure(3,weight=1)
         
         self.endcell=tk.Frame(self)
-        self.endcell.grid(column=0,row=5, columnspan=3, sticky=tk.W + tk.E, padx=10, pady=10)
+        self.endcell.grid(column=0,row=4, columnspan=2, padx=10, pady=10, sticky=tk.W + tk.E)
 
         self.enddatelabel=tk.Label(self.endcell,text="  End:")
-        self.enddatelabel.grid(column=0,row=0, sticky=tk.E, padx=5, pady=5)
+        self.enddatelabel.grid(column=0,row=0, padx=5, pady=5, sticky=tk.W)
          
         self.enddatecal = DateEntry(self.endcell,width=11,bg='white',fg='black',borderwidth=2)
         self.enddatecal.set_date(self.enddate)
@@ -133,22 +129,32 @@ class MainFrame(ttk.Frame):
         self.enddatecal.bind("<<DateEntrySelected>>", self.update_enddate)
 
         self.endh_spin = ttk.Spinbox(self.endcell, from_=0,to=23, width=4, wrap=True, command=self.update_endtime)
-        self.endh_spin.grid(column=2,row=0, padx=5, pady=5)
+        self.endh_spin.grid(column=2,row=0, padx=5, pady=5,sticky=tk.E)
         self.endh_spin.set(self.enddate.hour)
         self.endm_spin = ttk.Spinbox(self.endcell, from_=0,to=59, width=4,wrap=True, command=self.update_endtime)
-        self.endm_spin.grid(column=3,row=0, padx=5, pady=5)
+        self.endm_spin.grid(column=3,row=0, padx=5, pady=5,sticky=tk.W)
         self.endm_spin.set(self.enddate.minute)
 
-        ttk.Button(self.endcell, text="Now", command=self.set_end_now, width=8).grid(column=4, row=0, padx=5, pady=5)
-
+        ttk.Button(self.endcell, text="Now", command=self.set_end_now, width=8).grid(column=4, row=0, padx=5, pady=5,sticky=tk.E)
+        self.endcell.grid_columnconfigure(0,weight=1)
+        self.endcell.grid_columnconfigure(1,weight=1)
+        self.endcell.grid_columnconfigure(2,weight=1)
+        self.endcell.grid_columnconfigure(3,weight=1)
+        
         self.buttoncell2 = tk.Frame(self)
-        self.buttoncell2.grid(column=0, row=6, columnspan = 3, padx=10, pady=10, sticky=tk.W + tk.E)
+        self.buttoncell2.grid(column=0, row=5, columnspan = 2, padx=10, pady=10, sticky=tk.W + tk.E)
 
-        ttk.Button(self.buttoncell2, text="Get data", command=self.get_data).grid(column=0, row=0, padx=7, pady=5)
-        ttk.Button(self.buttoncell2, text="Plot data", command=self.plot_data).grid(column=1, row=0, padx=7, pady=5)
-        ttk.Button(self.buttoncell2, text="Save to file", command=self.save_to_file).grid(column=2, row=0, padx=7, pady=5)
-        ttk.Button(self.buttoncell2, text="Quit", command=container.destroy).grid(column=3, row=0, padx=7, pady=5)
-
+        ttk.Button(self.buttoncell2, text="Get data"    , command=self.get_data      ).grid(column=0, row=0, padx=7, pady=5, sticky=tk.W)
+        ttk.Button(self.buttoncell2, text="Plot data"    , command=self.plot_data    ).grid(column=1, row=0, padx=7, pady=5)
+        ttk.Button(self.buttoncell2, text="Advanced plot", command=self.advanced_plot).grid(column=2, row=0, padx=7, pady=5)
+        ttk.Button(self.buttoncell2, text="Save to file" , command=self.save_to_file ).grid(column=3, row=0, padx=7, pady=5, sticky=tk.E)
+        ttk.Button(self.buttoncell2, text="Quit", command=container.destroy).grid(column=3, row=2, padx=7, pady=10,sticky=tk.E)
+        
+        self.buttoncell2.grid_columnconfigure(0,weight=1)
+        self.buttoncell2.grid_columnconfigure(1,weight=1)
+        self.buttoncell2.grid_columnconfigure(2,weight=1)
+        self.buttoncell2.grid_columnconfigure(3,weight=1)
+        
         self.grid(padx=10, pady=10, sticky=tk.NSEW)
 
     '''
@@ -257,6 +263,9 @@ class MainFrame(ttk.Frame):
     def plot_data(self):
         plotWin = PlotDialog(self)
 
+    def advanced_plot(self):
+        plotWin = AdvancedPlotDialog(self)
+
     def save_to_file(self):
         filename = fd.asksaveasfilename(initialdir=os.getcwd(),filetypes=[('Comma-separated text','*.csv')])
         try:
@@ -291,12 +300,160 @@ class MainFrame(ttk.Frame):
         self.starth_spin.set(self.startdate.hour)
         self.startm_spin.set(self.startdate.minute)
 
+class AdvancedPlotDialog(tk.Toplevel, object):
+    def __init__(self,parent):
+        super().__init__(parent)
+        self.title("Advanced plot")
+        self.parent=parent
+        plt.rcParams["axes.titlelocation"] = 'right'
+        plt.style.use('dark_background')
+        overlap = {name for name in mcolors.CSS4_COLORS
+                if f'xkcd:{name}' in mcolors.XKCD_COLORS}
+
+        overlap.difference_update(['aqua','black','white','lime','chocolate','gold'])
+        self.colors = [mcolors.XKCD_COLORS[f'xkcd:{color_name}'].upper() for color_name in sorted(overlap)]
+        self.colornames = sorted(overlap)
+        
+        self.vars=[key for key in list(parent.df.keys()) if key.find('tstamp')==-1]        
+        self.ldf=parent.df.copy(deep=True) #copy dataframe before aligning timestamps/renaming columns
+
+        dflist=[]
+        dfdev={}
+        for dev in self.vars:
+            dfdev=self.ldf[['tstamp_%s'%dev,dev]]
+            dfdev.rename(columns={'tstamp_%s'%dev:'time'},inplace=True)
+            #dfdev['tstamp']= pd.to_datetime(dfdev['tstamp'])
+            dflist.append(dfdev.dropna())
+
+        df_merged = reduce(lambda  left,right: pd.merge_asof(left,right,on=['time'],direction='nearest',tolerance=20), dflist).dropna() #fillna('nodata')
+
+        self.vars.insert(0,'time')
+        self.ldf=df_merged.rename({key : key.replace(':','')  for key in self.ldf.keys()},axis=1) #eval does not like :
+        print(self.ldf)
+        
+        self.plotdef=tk.Toplevel(parent)
+        self.plotdef.title("Advanced plot")
+        alist_scroll=tk.Scrollbar(self.plotdef)
+        self.alist=ttk.Treeview(self.plotdef,yscrollcommand=alist_scroll.set)
+        alist_scroll.config(command=self.alist.yview)
+        alist_scroll.grid(column=1,row=0,sticky=tk.N+tk.S,padx=(0,10),pady=10)
+        self.alist['columns']=('device')
+        self.alist.column("#0",width=0,stretch=tk.NO)
+        self.alist.column("device",anchor=tk.W,width=160)
+        self.alist.heading("#0",text="",anchor=tk.CENTER)
+        self.alist.heading("device",text="Y axis",anchor=tk.CENTER)
+        self.alist.grid(column=0,row=0,columnspan=3,sticky = tk.NSEW,padx=(10,0),pady=10)
+
+        tk.Label(self.plotdef,text="X axis:").grid(column=0,row=1,padx=10)
+        self.xaxis=ttk.Combobox(self.plotdef,width=16)
+        self.xaxis['values']=self.vars
+        self.xaxis.set(self.xaxis['values'][0])
+        self.xaxis.grid(column=1,row=1,columnspan=2,padx=10,pady=10)
+
+        self.yaxis=ttk.Combobox(self.plotdef,width=24)
+        self.yaxis.insert(0,'Y axis')
+        self.yaxis.grid(column=0,row=2,padx=10,pady=10)
+        self.yaxis.bind("<KeyRelease>",self.fill_yaxis)
+        self.yaxis.bind("<Tab>",self.fill_yaxis)
+        self.yaxis.bind("<FocusIn>",lambda x: self.yaxis.selection_range(0, tk.END))
+        
+        tk.Button(self.plotdef,text="Add", command=self.add_device).grid(column=1, row=2, padx=10, pady=10)
+        tk.Button(self.plotdef,text="Remove", command=self.remove_device).grid(column=2, row=2, padx=10, pady=10)
+        tk.Button(self.plotdef,text="Update plot", command=self.update_plot).grid(column=1, row=3, padx=7, pady=5)
+        tk.Button(self.plotdef,text="Close", command=self.close).grid(column=2, row=3, padx=7, pady=5)
+
+        self.plotdef.update()
+        #self.plotdef.grid(padx=10, pady=10, sticky=tk.NSEW)
+        
+        self.fig = Figure(figsize=(10,10))
+        self.canvas = FigureCanvasTkAgg(self.fig, master=self)
+        self.canvas.draw()
+        self.toolbar = MyToolbar(self.canvas,self)
+        self.toolbar.update()
+        self.canvas.get_tk_widget().grid(column=0, row=0, sticky=tk.NSEW )
+        self.toolbar.grid(column=0, row=1, columnspan=3, sticky = tk.W + tk.E)
+        
+        print(self.plotdef.winfo_x()+self.plotdef.winfo_width())
+        print(self.plotdef.winfo_y())
+        self.wm_geometry("+%d+%d" % (self.plotdef.winfo_x()+self.plotdef.winfo_width(), self.plotdef.winfo_y()))
+
+    def fill_yaxis(self,event):
+        if event.keysym=="Tab" and self.yaxis.selection_present(): 
+            self.yaxis.icursor(tk.END)
+            self.yaxis.select_range(tk.END,tk.END)     
+            return "break"
+        if event.keysym in ["BackSpace","Left","Right","Shift_L","Shift_R","Tab"]:
+            return
+        
+        alldevlist=self.vars
+        ops = [index.start() for index in re.finditer('\+|\-|\/|\*| ',self.yaxis.get())]
+        first=0 if len(ops)==0 else ops[-1]+1
+        devtxt=self.yaxis.get()[first:self.yaxis.index(tk.INSERT)]
+        l=len(devtxt)
+        self.yaxis['values']=[self.yaxis.get()[0:first]+e for e in alldevlist if e.find(devtxt.upper())==0]
+        if len(self.yaxis['values'])==0 or l==0:
+            return
+        self.yaxis.delete(first,tk.END)
+        self.yaxis.insert(first,devtxt+self.yaxis['values'][0][first+l:])
+        self.yaxis.icursor(first+l)
+        self.yaxis.select_range(first+l,tk.END)     
+    
+    def update_plot(self):
+        self.fig.clf()
+        ylist=[self.alist.item(line)['values'][0] for line in self.alist.get_children()]
+        self.ax = [None]*len(ylist)
+        self.ax[0] = self.fig.add_subplot(111)
+        self.ax[0].xaxis.grid(True, which='major')
+        self.ax[0].yaxis.grid(True, which='major')
+        self.ax[0].set_xlabel(self.xaxis.get())
+        for i in range(1,len(ylist)):
+            self.ax[i] = self.ax[0].twinx()
+        for i,yd in enumerate(ylist):
+            space= space + '  '*(len(yd)+1) if i>0 else ''
+            col=self.colors[i]
+            self.ax[i].set_title(yd+space,color=col,ha='right',fontsize='large')                                
+            self.ax[i].tick_params(axis='y', colors=col, labelsize='large',rotation=90)
+            ydata=self.ldf.eval(yd.replace(":",""))
+            xx=self.ldf['time'].apply(lambda x: datetime.fromtimestamp(x) if x==x else x) if "time" in self.xaxis.get() else self.ldf[self.xaxis.get().replace(":","")]
+            self.ax[i].plot(xx,ydata,c=col,marker='o',linestyle='None')
+            self.ax[i].yaxis.set_major_locator(mt.LinearLocator(5))
+
+            if i%2==0:
+                self.ax[i].yaxis.tick_left()
+                for yl in self.ax[i].get_yticklabels():
+                    yl.set_x( -0.025*(i/2.) )
+                    yl.set(verticalalignment='bottom')
+                    
+            else:
+                self.ax[i].yaxis.tick_right()
+                for yl in self.ax[i].get_yticklabels():
+                    yl.set_x( 1.0+0.025*(i-1)/2.)
+                    yl.set(verticalalignment='bottom')
+                    
+        self.canvas.draw()
+        
+            
+    def close(self):
+        self.destroy()
+        self.plotdef.destroy()
+        
+    def add_device(self):
+        if "AXIS" in self.yaxis.get().upper():
+            return
+        self.alist.insert(parent='',index='end',text='',
+                       values=(self.yaxis.get().upper()))
+        
+    def remove_device(self):
+        selected_devs = self.alist.selection()        
+        for dev in selected_devs:
+            self.alist.delete(dev)
+        
 class PlotDialog(tk.Toplevel, object):
     def __init__(self,parent):
         super().__init__(parent)
         self.title("Data")
         self.parent=parent
-        
+
         plt.rcParams["axes.titlelocation"] = 'right'
         plt.style.use('dark_background')
         overlap = {name for name in mcolors.CSS4_COLORS
