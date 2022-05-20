@@ -415,7 +415,7 @@ class AdvancedPlotDialog(tk.Toplevel, object):
             self.ax[i].tick_params(axis='y', colors=col, labelsize='large',rotation=90)
             ydata=self.ldf.eval(yd.replace(":",""))
             xx=self.ldf['time'].apply(lambda x: datetime.fromtimestamp(x) if x==x else x) if "time" in self.xaxis.get() else self.ldf[self.xaxis.get().replace(":","")]
-            self.ax[i].plot(xx,ydata,c=col,marker='o',linestyle='None')
+            self.ax[i].plot(xx,ydata,c=col,marker='.',linestyle='None')
             self.ax[i].yaxis.set_major_locator(mt.LinearLocator(5))
 
             if i%2==0:
@@ -441,7 +441,7 @@ class AdvancedPlotDialog(tk.Toplevel, object):
         if "AXIS" in self.yaxis.get().upper():
             return
         self.alist.insert(parent='',index='end',text='',
-                       values=(self.yaxis.get().upper()))
+                       values=(self.yaxis.get().upper(),))
         
     def remove_device(self):
         selected_devs = self.alist.selection()        
